@@ -42,50 +42,55 @@ struct TodayView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: BiteLogTheme.cardSpacing) {
-                    dateNavigator
+            VStack(spacing: 0) {
+                dateNavigator
+                    .padding(.horizontal, BiteLogTheme.pagePadding)
+                    
+                    
 
-                    CalorieRingView(
-                        consumed: totalCalories,
-                        target: profile?.dailyCalorieTarget ?? 2000,
-                        ringSize: ringSize
-                    )
-
-                    if let profile {
-                        MacroProgressView(
-                            proteinG: totalProtein,
-                            carbsG: totalCarbs,
-                            fatG: totalFat,
-                            proteinTarget: profile.proteinTargetG,
-                            carbTarget: profile.carbTargetG,
-                            fatTarget: profile.fatTargetG
+                ScrollView {
+                    VStack(spacing: BiteLogTheme.cardSpacing) {
+                        CalorieRingView(
+                            consumed: totalCalories,
+                            target: profile?.dailyCalorieTarget ?? 2000,
+                            ringSize: ringSize
                         )
-                        .padding(.horizontal, 4)
-                    }
 
-                    ForEach(MealType.allCases) { meal in
-                        MealSectionView(
-                            mealType: meal,
-                            entries: entries(for: meal),
-                            onAdd: {
-                                selectedMealType = meal
-                                showingFoodSearch = true
-                            },
-                            onDelete: { entry in
-                                withAnimation {
-                                    modelContext.delete(entry)
+                        if let profile {
+                            MacroProgressView(
+                                proteinG: totalProtein,
+                                carbsG: totalCarbs,
+                                fatG: totalFat,
+                                proteinTarget: profile.proteinTargetG,
+                                carbTarget: profile.carbTargetG,
+                                fatTarget: profile.fatTargetG
+                            )
+                            .padding(.horizontal, 4)
+                        }
+
+                        ForEach(MealType.allCases) { meal in
+                            MealSectionView(
+                                mealType: meal,
+                                entries: entries(for: meal),
+                                onAdd: {
+                                    selectedMealType = meal
+                                    showingFoodSearch = true
+                                },
+                                onDelete: { entry in
+                                    withAnimation {
+                                        modelContext.delete(entry)
+                                    }
                                 }
-                            }
-                        )
-                    }
+                            )
+                        }
 
-                    copyYesterdayButton
+                        copyYesterdayButton
+                    }
+                    .padding(.horizontal, BiteLogTheme.pagePadding)
+                    .padding(.top, BiteLogTheme.cardSpacing)
+                    .padding(.bottom, 20)
                 }
-                .padding(.horizontal, BiteLogTheme.pagePadding)
-                .padding(.bottom, 20)
             }
-            .navigationTitle("Today")
             .sheet(isPresented: $showingFoodSearch) {
                 FoodSearchView(mealType: selectedMealType, logDate: selectedDate)
             }
