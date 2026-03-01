@@ -4,8 +4,6 @@ struct ActivityLevelStepView: View {
     @Binding var activityLevel: ActivityLevel
     var onContinue: () -> Void
 
-    @Namespace private var selectionAnimation
-
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -24,10 +22,9 @@ struct ActivityLevelStepView: View {
                         ForEach(ActivityLevel.allCases) { level in
                             ActivityLevelCard(
                                 level: level,
-                                isSelected: activityLevel == level,
-                                namespace: selectionAnimation
+                                isSelected: activityLevel == level
                             ) {
-                                withAnimation(.smooth(duration: 0.3)) {
+                                withAnimation(.smooth(duration: 0.25)) {
                                     activityLevel = level
                                 }
                             }
@@ -50,40 +47,49 @@ struct ActivityLevelStepView: View {
             .padding(.horizontal, BiteLogTheme.pagePadding)
             .padding(.bottom, 16)
         }
-        .toolbarVisibility(.hidden, for: .navigationBar)
     }
 }
 
 private struct ActivityLevelCard: View {
     let level: ActivityLevel
     let isSelected: Bool
-    var namespace: Namespace.ID
     var onTap: () -> Void
+
+    private var contentForeground: Color {
+        isSelected ? BiteLogTheme.warmWhite : BiteLogTheme.textPrimary
+    }
+
+    private var secondaryForeground: Color {
+        isSelected ? BiteLogTheme.warmWhite.opacity(0.9) : BiteLogTheme.textSecondary
+    }
+
+    private var accentForeground: Color {
+        isSelected ? BiteLogTheme.warmWhite : BiteLogTheme.sage
+    }
 
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 14) {
                 Image(systemName: level.iconName)
                     .font(.title2)
-                    .foregroundStyle(isSelected ? BiteLogTheme.sage : BiteLogTheme.textSecondary)
+                    .foregroundStyle(accentForeground)
                     .frame(width: 36)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(level.displayName)
                         .font(BiteLogTheme.itemTitle)
-                        .foregroundStyle(BiteLogTheme.textPrimary)
+                        .foregroundStyle(contentForeground)
                     Text(level.description)
                         .font(BiteLogTheme.caption)
-                        .foregroundStyle(BiteLogTheme.textSecondary)
+                        .foregroundStyle(secondaryForeground)
                 }
 
                 Spacer()
 
-                if isSelected {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(BiteLogTheme.sage)
-                        .font(.title3)
-                }
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(accentForeground)
+                    .font(.title3)
+                    .opacity(isSelected ? 1 : 0)
             }
             .padding(BiteLogTheme.cardPadding)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -91,10 +97,7 @@ private struct ActivityLevelCard: View {
                 isSelected ? .regular.tint(BiteLogTheme.sage).interactive() : .regular.interactive(),
                 in: .rect(cornerRadius: BiteLogTheme.smallCornerRadius)
             )
-            .glassEffectID(
-                isSelected ? "selected" : "level-\(level.id)",
-                in: namespace
-            )
+            .animation(.smooth(duration: 0.25), value: isSelected)
         }
         .buttonStyle(.plain)
     }

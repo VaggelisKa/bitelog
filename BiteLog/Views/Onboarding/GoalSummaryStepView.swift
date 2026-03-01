@@ -67,7 +67,6 @@ struct GoalSummaryStepView: View {
             .padding(.horizontal, BiteLogTheme.pagePadding)
             .padding(.bottom, 16)
         }
-        .toolbarVisibility(.hidden, for: .navigationBar)
         .onChange(of: calculatedTarget) {
             if !useManualOverride {
                 manualTarget = "\(calculatedTarget)"
