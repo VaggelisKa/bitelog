@@ -53,8 +53,6 @@ struct PortionPickerView: View {
 
                     portionInput
 
-                    quickPortionButtons
-
                     macroPreview
 
                     mealSelector
@@ -119,7 +117,7 @@ struct PortionPickerView: View {
     }
 
     private var portionInput: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("PORTION SIZE")
                 .font(BiteLogTheme.caption)
                 .foregroundStyle(BiteLogTheme.textSecondary)
@@ -145,54 +143,58 @@ struct PortionPickerView: View {
                 .onChange(of: portionGrams) {
                     portionText = "\(Int(portionGrams))"
                 }
-        }
-        .glassCard(cornerRadius: BiteLogTheme.smallCornerRadius)
-    }
 
-    private var quickPortionButtons: some View {
-        GlassEffectContainer(spacing: 8) {
-            HStack(spacing: 8) {
-                ForEach(quickPortions, id: \.grams) { portion in
-                    Button {
-                        withAnimation(.smooth(duration: 0.2)) {
-                            portionGrams = portion.grams
-                            portionText = "\(Int(portion.grams))"
+            GlassEffectContainer(spacing: 8) {
+                HStack(spacing: 8) {
+                    ForEach(quickPortions, id: \.grams) { portion in
+                        let isSelected = portionGrams == portion.grams
+                        Button {
+                            withAnimation(.smooth(duration: 0.2)) {
+                                portionGrams = portion.grams
+                                portionText = "\(Int(portion.grams))"
+                            }
+                        } label: {
+                            Text(portion.label)
+                                .font(BiteLogTheme.numericCaption)
+                                .foregroundStyle(isSelected ? BiteLogTheme.warmWhite : BiteLogTheme.textPrimary)
+                                .padding(.horizontal, quickButtonPadding)
+                                .padding(.vertical, 8)
                         }
-                    } label: {
-                        Text(portion.label)
-                            .font(BiteLogTheme.numericCaption)
-                            .padding(.horizontal, quickButtonPadding)
-                            .padding(.vertical, 8)
+                        .buttonStyle(.plain)
+                        .glassEffect(
+                            isSelected
+                                ? .regular.tint(BiteLogTheme.sage).interactive()
+                                : .regular.interactive(),
+                            in: .capsule
+                        )
                     }
-                    .glassEffect(
-                        portionGrams == portion.grams
-                            ? .regular.tint(BiteLogTheme.sage).interactive()
-                            : .regular.interactive(),
-                        in: .capsule
-                    )
-                }
 
-                if let serving = foodItem.defaultServingG, serving > 0 {
-                    Button {
-                        withAnimation(.smooth(duration: 0.2)) {
-                            portionGrams = serving
-                            portionText = "\(Int(serving))"
+                    if let serving = foodItem.defaultServingG, serving > 0 {
+                        let isServingSelected = portionGrams == serving
+                        Button {
+                            withAnimation(.smooth(duration: 0.2)) {
+                                portionGrams = serving
+                                portionText = "\(Int(serving))"
+                            }
+                        } label: {
+                            Text("1 srv")
+                                .font(BiteLogTheme.numericCaption)
+                                .foregroundStyle(isServingSelected ? BiteLogTheme.warmWhite : BiteLogTheme.textPrimary)
+                                .padding(.horizontal, quickButtonPadding)
+                                .padding(.vertical, 8)
                         }
-                    } label: {
-                        Text("1 srv")
-                            .font(BiteLogTheme.numericCaption)
-                            .padding(.horizontal, quickButtonPadding)
-                            .padding(.vertical, 8)
+                        .buttonStyle(.plain)
+                        .glassEffect(
+                            isServingSelected
+                                ? .regular.tint(BiteLogTheme.sage).interactive()
+                                : .regular.interactive(),
+                            in: .capsule
+                        )
                     }
-                    .glassEffect(
-                        portionGrams == serving
-                            ? .regular.tint(BiteLogTheme.sage).interactive()
-                            : .regular.interactive(),
-                        in: .capsule
-                    )
                 }
             }
         }
+        .glassCard(cornerRadius: BiteLogTheme.smallCornerRadius)
     }
 
     private var macroPreview: some View {
@@ -220,7 +222,7 @@ struct PortionPickerView: View {
     }
 
     private var mealSelector: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             Text("MEAL")
                 .font(BiteLogTheme.caption)
                 .foregroundStyle(BiteLogTheme.textSecondary)
@@ -257,4 +259,23 @@ struct PortionPickerView: View {
         onLogged?()
         dismiss()
     }
+}
+
+#Preview {
+    let food = FoodItem(
+        name: "Skyr",
+        brand: "Arla",
+        caloriesPer100g: 63,
+        proteinPer100g: 11,
+        carbsPer100g: 4,
+        fatPer100g: 0,
+        defaultServingG: 170
+    )
+    return PortionPickerView(
+        foodItem: food,
+        mealType: .lunch,
+        logDate: .now,
+        isNewFood: true
+    )
+    .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
 }

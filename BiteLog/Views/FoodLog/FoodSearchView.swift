@@ -175,3 +175,8 @@ struct FoodSearchView: View {
         }
     }
 }
+
+#Preview {
+    FoodSearchView(mealType: .breakfast, logDate: .now)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+}
