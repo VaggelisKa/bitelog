@@ -3,10 +3,23 @@ import SwiftUI
 struct MealSectionView: View {
     let mealType: MealType
     let entries: [FoodLogEntry]
+    var snackIndex: Int
     var onAdd: () -> Void
     var onDelete: (FoodLogEntry) -> Void
 
     @State private var entryToDelete: FoodLogEntry?
+
+    init(mealType: MealType, entries: [FoodLogEntry], snackIndex: Int = 0, onAdd: @escaping () -> Void, onDelete: @escaping (FoodLogEntry) -> Void) {
+        self.mealType = mealType
+        self.entries = entries
+        self.snackIndex = snackIndex
+        self.onAdd = onAdd
+        self.onDelete = onDelete
+    }
+
+    private var sectionTitle: String {
+        mealType == .snack ? mealType.displayName(snackIndex: snackIndex) : mealType.displayName
+    }
 
     private var totalCalories: Double {
         entries.reduce(0) { $0 + $1.calories }
@@ -19,7 +32,7 @@ struct MealSectionView: View {
                     .foregroundStyle(BiteLogTheme.sage)
                     .font(.title3)
 
-                Text(mealType.displayName)
+                Text(sectionTitle)
                     .font(BiteLogTheme.itemTitle)
                     .foregroundStyle(BiteLogTheme.textPrimary)
 
@@ -34,7 +47,7 @@ struct MealSectionView: View {
                         .font(.title3)
                         .foregroundStyle(BiteLogTheme.sage)
                 }
-                .accessibilityLabel("Add food to \(mealType.displayName)")
+                .accessibilityLabel("Add food to \(sectionTitle)")
             }
 
             if entries.isEmpty {
@@ -72,7 +85,7 @@ struct MealSectionView: View {
             }
         } message: {
             if let entry = entryToDelete {
-                Text("Remove \(entry.foodName) from \(mealType.displayName)?")
+                Text("Remove \(entry.foodName) from \(sectionTitle)?")
             }
         }
     }

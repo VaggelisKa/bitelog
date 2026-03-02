@@ -6,6 +6,7 @@ struct PortionPickerView: View {
     let mealType: MealType
     let logDate: Date
     let isNewFood: Bool
+    let snackIndex: Int
     var onLogged: (() -> Void)?
 
     @Environment(\.modelContext) private var modelContext
@@ -24,11 +25,12 @@ struct PortionPickerView: View {
         ("200g", 200),
     ]
 
-    init(foodItem: FoodItem, mealType: MealType, logDate: Date, isNewFood: Bool, onLogged: (() -> Void)? = nil) {
+    init(foodItem: FoodItem, mealType: MealType, logDate: Date, isNewFood: Bool, snackIndex: Int = 0, onLogged: (() -> Void)? = nil) {
         self.foodItem = foodItem
         self.mealType = mealType
         self.logDate = logDate
         self.isNewFood = isNewFood
+        self.snackIndex = snackIndex
         self.onLogged = onLogged
         self._selectedMeal = State(initialValue: mealType)
         let defaultPortion = foodItem.defaultServingG ?? 100
@@ -248,7 +250,8 @@ struct PortionPickerView: View {
             date: logDate,
             mealType: selectedMeal,
             foodItem: food,
-            portionGrams: portionGrams
+            portionGrams: portionGrams,
+            snackIndex: selectedMeal == .snack ? snackIndex : 0
         )
         modelContext.insert(entry)
         onLogged?()

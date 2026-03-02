@@ -4,6 +4,7 @@ import SwiftData
 struct FoodSearchView: View {
     let mealType: MealType
     let logDate: Date
+    var snackIndex: Int = 0
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -48,7 +49,8 @@ struct FoodSearchView: View {
                     foodItem: food,
                     mealType: mealType,
                     logDate: logDate,
-                    isNewFood: true
+                    isNewFood: true,
+                    snackIndex: snackIndex
                 ) { shouldDismissAfterLog = true }
             }
             .sheet(item: $selectedFoodItem, onDismiss: dismissIfNeeded) { food in
@@ -56,7 +58,8 @@ struct FoodSearchView: View {
                     foodItem: food,
                     mealType: mealType,
                     logDate: logDate,
-                    isNewFood: false
+                    isNewFood: false,
+                    snackIndex: snackIndex
                 ) { shouldDismissAfterLog = true }
             }
             .onAppear {

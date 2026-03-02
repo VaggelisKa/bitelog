@@ -6,6 +6,7 @@ final class FoodLogEntry {
     var id: UUID
     var date: Date
     var mealType: MealType
+    var snackIndex: Int
 
     var foodItem: FoodItem?
 
@@ -21,11 +22,13 @@ final class FoodLogEntry {
         date: Date,
         mealType: MealType,
         foodItem: FoodItem,
-        portionGrams: Double
+        portionGrams: Double,
+        snackIndex: Int = 1
     ) {
         self.id = UUID()
         self.date = Calendar.current.startOfDay(for: date)
         self.mealType = mealType
+        self.snackIndex = mealType == .snack ? snackIndex : 0
         self.foodItem = foodItem
         self.portionGrams = portionGrams
         self.calories = foodItem.calories(forGrams: portionGrams)
