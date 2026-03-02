@@ -43,4 +43,9 @@ enum MealType: String, Codable, CaseIterable, Identifiable {
         case .snack: 3
         }
     }
+
+    func displayName(snackIndex: Int) -> String {
+        guard self == .snack else { return displayName }
+        return "Snack \(snackIndex)"
+    }
 }

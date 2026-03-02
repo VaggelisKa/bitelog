@@ -11,7 +11,9 @@ enum CSVExporter {
 
         for entry in sorted {
             let date = formatter.string(from: entry.date)
-            let meal = entry.mealType.displayName
+            let meal = entry.mealType == .snack
+                ? entry.mealType.displayName(snackIndex: entry.snackIndex)
+                : entry.mealType.displayName
             let food = entry.foodName.replacingOccurrences(of: ",", with: ";")
             let portion = String(format: "%.0f", entry.portionGrams)
             let cal = String(format: "%.0f", entry.calories)
