@@ -15,6 +15,9 @@ struct FoodSearchView: View {
     @State private var selectedProduct: OpenFoodFactsProduct?
     @State private var selectedFoodItem: FoodItem?
     @State private var shouldDismissAfterLog = false
+    @State private var showingScanner = false
+    @State private var isLookingUpBarcode = false
+    @State private var barcodeLookupError: String?
     @FocusState private var isSearchFocused: Bool
 
     private var showingRecent: Bool {
@@ -30,7 +33,9 @@ struct FoodSearchView: View {
             VStack(spacing: 0) {
                 searchBar
 
-                if showingRecent {
+                if isLookingUpBarcode {
+                    barcodeLookupOverlay
+                } else if showingRecent {
                     recentFoodsList
                 } else {
                     searchResultsList
@@ -62,6 +67,9 @@ struct FoodSearchView: View {
                     snackIndex: snackIndex
                 ) { shouldDismissAfterLog = true }
             }
+            .fullScreenCover(isPresented: $showingScanner) {
+                barcodeScannerSheet
+            }
             .onAppear {
                 isSearchFocused = true
             }
@@ -70,28 +78,41 @@ struct FoodSearchView: View {
 
     private var searchBar: some View {
         HStack(spacing: 10) {
-            Image(systemName: "magnifyingglass")
-                .foregroundStyle(BiteLogTheme.textSecondary)
+            HStack(spacing: 10) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(BiteLogTheme.textSecondary)
 
-            TextField("Search foods...", text: $searchText)
-                .font(BiteLogTheme.bodyText)
-                .focused($isSearchFocused)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .onSubmit { searchService.search(query: searchText) }
+                TextField("Search foods...", text: $searchText)
+                    .font(BiteLogTheme.bodyText)
+                    .focused($isSearchFocused)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .onSubmit { searchService.search(query: searchText) }
 
-            if !searchText.isEmpty {
-                Button {
-                    searchText = ""
-                    searchService.clearResults()
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(BiteLogTheme.textSecondary)
+                if !searchText.isEmpty {
+                    Button {
+                        searchText = ""
+                        searchService.clearResults()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(BiteLogTheme.textSecondary)
+                    }
                 }
             }
+            .padding(12)
+            .glassEffect(.regular, in: .capsule)
+
+            Button {
+                isSearchFocused = false
+                showingScanner = true
+            } label: {
+                Image(systemName: "barcode.viewfinder")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(BiteLogTheme.sage)
+                    .frame(width: 44, height: 44)
+            }
+            .glassEffect(.regular.interactive(), in: .circle)
         }
-        .padding(12)
-        .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, BiteLogTheme.pagePadding)
         .padding(.vertical, 10)
         .onChange(of: searchText) {
@@ -164,6 +185,76 @@ struct FoodSearchView: View {
                     }
                 }
                 .listStyle(.plain)
+            }
+        }
+    }
+
+    private var barcodeScannerSheet: some View {
+        ZStack(alignment: .topLeading) {
+            BarcodeScannerView { code in
+                showingScanner = false
+                handleScannedBarcode(code)
+            }
+            .ignoresSafeArea()
+
+            Button {
+                showingScanner = false
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .padding(.top, 56)
+            .padding(.leading, 20)
+        }
+    }
+
+    private var barcodeLookupOverlay: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            if let error = barcodeLookupError {
+                Image(systemName: "barcode.viewfinder")
+                    .font(.system(size: 48))
+                    .foregroundStyle(BiteLogTheme.textSecondary)
+                Text(error)
+                    .font(BiteLogTheme.bodyText)
+                    .foregroundStyle(BiteLogTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+                Button("Try Again") {
+                    barcodeLookupError = nil
+                    showingScanner = true
+                }
+                .buttonStyle(.bordered)
+                .tint(BiteLogTheme.sage)
+            } else {
+                ProgressView()
+                    .controlSize(.large)
+                Text("Looking up product...")
+                    .font(BiteLogTheme.bodyText)
+                    .foregroundStyle(BiteLogTheme.textSecondary)
+            }
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private func handleScannedBarcode(_ code: String) {
+        isLookingUpBarcode = true
+        barcodeLookupError = nil
+
+        Task {
+            do {
+                let product = try await searchService.lookupBarcode(code)
+                isLookingUpBarcode = false
+                selectedProduct = product
+            } catch is BarcodeLookupError {
+                isLookingUpBarcode = false
+                barcodeLookupError = "No nutritional data found\nfor this barcode."
+            } catch {
+                isLookingUpBarcode = false
+                barcodeLookupError = "Lookup failed.\nCheck your connection."
             }
         }
     }

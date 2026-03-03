@@ -51,6 +51,27 @@ final class FoodSearchService {
         errorMessage = nil
     }
 
+    func lookupBarcode(_ code: String) async throws -> OpenFoodFactsProduct {
+        let urlString = "\(Self.baseURL)/api/v0/product/\(code).json"
+
+        guard let url = URL(string: urlString) else {
+            throw URLError(.badURL)
+        }
+
+        var request = URLRequest(url: url)
+        request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
+
+        let (data, _) = try await URLSession.shared.data(for: request)
+        let response = try JSONDecoder().decode(BarcodeLookupResponse.self, from: data)
+
+        guard response.status == 1, let product = response.product,
+              product.productName != nil, product.nutriments?.energyKcal100g != nil else {
+            throw BarcodeLookupError.productNotFound
+        }
+
+        return product
+    }
+
     private func performSearch(query: String) async throws -> [OpenFoodFactsProduct] {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
         let urlString = "\(Self.baseURL)/cgi/search.pl?search_terms=\(encoded)&search_simple=1&json=1&countries_tags_en=denmark&page_size=30"
@@ -109,6 +130,23 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         case servingSize = "serving_size"
         case servingQuantityG = "serving_quantity"
         case nutriments
+    }
+}
+
+struct BarcodeLookupResponse: Decodable {
+    let code: String?
+    let status: Int
+    let product: OpenFoodFactsProduct?
+}
+
+enum BarcodeLookupError: LocalizedError {
+    case productNotFound
+
+    var errorDescription: String? {
+        switch self {
+        case .productNotFound:
+            "Product not found for this barcode."
+        }
     }
 }
 
