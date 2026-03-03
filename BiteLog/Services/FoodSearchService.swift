@@ -10,6 +10,7 @@ final class FoodSearchService {
     private var searchTask: Task<Void, Never>?
 
     private static let baseURL = "https://world.openfoodfacts.org"
+    private static let searchBaseURL = "https://search.openfoodfacts.org"
     private static let userAgent = "BiteLog/1.0 (iOS; contact@bitelog.app)"
 
     func search(query: String) {
@@ -58,7 +59,7 @@ final class FoodSearchService {
             throw URLError(.badURL)
         }
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, timeoutInterval: 8)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
 
         let (data, _) = try await URLSession.shared.data(for: request)
@@ -72,22 +73,25 @@ final class FoodSearchService {
         return product
     }
 
+    private static let searchFields = "code,product_name,brands,serving_size,serving_quantity,nutriments"
+
     private func performSearch(query: String) async throws -> [OpenFoodFactsProduct] {
         let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        let urlString = "\(Self.baseURL)/cgi/search.pl?search_terms=\(encoded)&search_simple=1&json=1&countries_tags_en=denmark&page_size=30"
+        let urlString = "\(Self.searchBaseURL)/search?q=\(encoded)&fields=\(Self.searchFields)&page_size=24&langs=en,da"
 
         guard let url = URL(string: urlString) else {
             throw URLError(.badURL)
         }
 
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, timeoutInterval: 10)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
 
         let (data, _) = try await URLSession.shared.data(for: request)
-        let response = try JSONDecoder().decode(OpenFoodFactsResponse.self, from: data)
+        let response = try JSONDecoder().decode(SearchResponse.self, from: data)
 
-        return response.products.filter { product in
-            product.productName != nil && product.nutriments?.energyKcal100g != nil
+        return response.hits.compactMap { hit in
+            guard hit.productName != nil, hit.nutriments?.energyKcal100g != nil else { return nil }
+            return hit
         }
     }
 
@@ -108,6 +112,10 @@ final class FoodSearchService {
 }
 
 // MARK: - API Response Models
+
+struct SearchResponse: Decodable {
+    let hits: [OpenFoodFactsProduct]
+}
 
 struct OpenFoodFactsResponse: Decodable {
     let products: [OpenFoodFactsProduct]
@@ -130,6 +138,24 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         case servingSize = "serving_size"
         case servingQuantityG = "serving_quantity"
         case nutriments
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        code = try container.decodeIfPresent(String.self, forKey: .code)
+        productName = try container.decodeIfPresent(String.self, forKey: .productName)
+        servingSize = try container.decodeIfPresent(String.self, forKey: .servingSize)
+        servingQuantityG = try container.decodeIfPresent(Double.self, forKey: .servingQuantityG)
+        nutriments = try container.decodeIfPresent(OFFNutriments.self, forKey: .nutriments)
+
+        // search-a-licious returns brands as [String], the main API returns String
+        if let brandsString = try? container.decodeIfPresent(String.self, forKey: .brands) {
+            brands = brandsString
+        } else if let brandsArray = try? container.decodeIfPresent([String].self, forKey: .brands) {
+            brands = brandsArray.joined(separator: ", ")
+        } else {
+            brands = nil
+        }
     }
 }
 
