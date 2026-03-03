@@ -95,6 +95,47 @@ enum HistoryRange: String, CaseIterable, Identifiable {
 }
 
 #Preview {
-    HistoryView()
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: UserProfile.self, FoodItem.self, FoodLogEntry.self, configurations: config)
+    let context = ModelContext(container)
+
+    let profile = UserProfile(age: 30, sex: .male, heightCm: 175, weightKg: 70, activityLevel: .moderatelyActive, dailyCalorieTarget: 2000)
+    context.insert(profile)
+
+    let oatmeal = FoodItem(name: "Oatmeal", caloriesPer100g: 389, proteinPer100g: 16.9, carbsPer100g: 66.3, fatPer100g: 6.9)
+    let chicken = FoodItem(name: "Chicken Breast", caloriesPer100g: 165, proteinPer100g: 31, carbsPer100g: 0, fatPer100g: 3.6)
+    let rice = FoodItem(name: "White Rice", caloriesPer100g: 130, proteinPer100g: 2.7, carbsPer100g: 28, fatPer100g: 0.3)
+    let apple = FoodItem(name: "Apple", caloriesPer100g: 52, proteinPer100g: 0.3, carbsPer100g: 14, fatPer100g: 0.2)
+    [oatmeal, chicken, rice, apple].forEach { context.insert($0) }
+
+    let calendar = Calendar.current
+    // Vary daily totals: ~1800–2300 so weekly average and day rows show meaningful data
+    let dailyCalorieTargets: [Double] = [2150, 1880, 2200, 1650, 1950, 2320, 1780, 2050, 1900, 2180]
+    let mealPortions: [(FoodItem, MealType, Double)] = [
+        (oatmeal, .breakfast, 80),
+        (apple, .breakfast, 120),
+        (chicken, .lunch, 180),
+        (rice, .lunch, 120),
+        (chicken, .dinner, 150),
+        (rice, .dinner, 100),
+        (apple, .snack, 150),
+    ]
+    let baseTotal = mealPortions.reduce(0.0) { sum, item in sum + item.0.calories(forGrams: item.2) }
+
+    for dayOffset in 0..<30 {
+        guard let date = calendar.date(byAdding: .day, value: -dayOffset, to: Date()) else { continue }
+        let dayStart = calendar.startOfDay(for: date)
+        let target = dailyCalorieTargets[dayOffset % dailyCalorieTargets.count]
+        let scale = target / baseTotal
+
+        for (food, meal, grams) in mealPortions {
+            let entry = FoodLogEntry(date: dayStart, mealType: meal, foodItem: food, portionGrams: grams * scale)
+            context.insert(entry)
+        }
+    }
+
+    try? context.save()
+
+    return HistoryView()
+        .modelContainer(container)
 }
