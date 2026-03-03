@@ -73,6 +73,28 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
     }
 
     private func setupCamera() {
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            break
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted {
+                        self?.setupCamera()
+                    } else {
+                        self?.showPermissionDeniedOverlay()
+                    }
+                }
+            }
+            return
+        case .denied, .restricted:
+            showPermissionDeniedOverlay()
+            return
+        @unknown default:
+            showPermissionDeniedOverlay()
+            return
+        }
+
         guard let device = AVCaptureDevice.default(for: .video),
               let input = try? AVCaptureDeviceInput(device: device) else {
             showPermissionDeniedOverlay()
@@ -145,19 +167,41 @@ final class ScannerViewController: UIViewController, AVCaptureMetadataOutputObje
     }
 
     private func showPermissionDeniedOverlay() {
+        let container = UIStackView()
+        container.axis = .vertical
+        container.spacing = 20
+        container.alignment = .center
+        container.translatesAutoresizingMaskIntoConstraints = false
+
         let label = UILabel()
         label.text = "Camera access is required\nto scan barcodes."
         label.numberOfLines = 0
         label.textAlignment = .center
         label.textColor = .white
         label.font = .preferredFont(forTextStyle: .headline)
-        label.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(label)
+
+        let button = UIButton(type: .system)
+        button.setTitle("Open Settings", for: .normal)
+        button.titleLabel?.font = .preferredFont(forTextStyle: .headline)
+        button.backgroundColor = .white
+        button.setTitleColor(.black, for: .normal)
+        button.layer.cornerRadius = 12
+        button.contentEdgeInsets = UIEdgeInsets(top: 12, left: 24, bottom: 12, right: 24)
+        button.addTarget(self, action: #selector(openSettings), for: .touchUpInside)
+
+        container.addArrangedSubview(label)
+        container.addArrangedSubview(button)
+        view.addSubview(container)
         NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: view.centerYAnchor),
-            label.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 32),
+            container.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            container.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            container.leadingAnchor.constraint(greaterThanOrEqualTo: view.leadingAnchor, constant: 32),
         ])
+    }
+
+    @objc private func openSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     func metadataOutput(
