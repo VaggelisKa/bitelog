@@ -73,7 +73,7 @@ struct CustomFoodFormView: View {
                     }
                 }
                 .padding(.horizontal, BiteLogTheme.pagePadding)
-                .padding(.bottom, 100)
+                .padding(.bottom, 24)
             }
             .navigationTitle(isEditing ? "Edit Custom Food" : "Create Custom Food")
             .navigationBarTitleDisplayMode(.inline)
@@ -87,20 +87,13 @@ struct CustomFoodFormView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-            }
-            .safeAreaInset(edge: .bottom) {
-                Button(action: saveFood) {
-                    Text(isEditing ? "Save Changes" : "Save Custom Food")
-                        .font(.system(.headline, design: .rounded))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveFood()
+                    }
+                    .fontWeight(.semibold)
+                    .disabled(!canSave)
                 }
-                .buttonStyle(.glassProminent)
-                .tint(BiteLogTheme.sage)
-                .disabled(!canSave)
-                .opacity(canSave ? 1.0 : 0.5)
-                .padding(.horizontal, BiteLogTheme.pagePadding)
-                .padding(.bottom, 16)
             }
             .onAppear(perform: populateFromExisting)
             .confirmationDialog("Delete Custom Food", isPresented: $showingDeleteConfirmation) {
