@@ -7,7 +7,7 @@ struct GoalSummaryStepView: View {
     let weightKg: Double
     let activityLevel: ActivityLevel
     @Binding var calorieDeficit: Double
-    var onComplete: () -> Void
+    var onContinue: (Int) -> Void
 
     @State private var manualTarget: String = ""
     @State private var useManualOverride = false
@@ -56,8 +56,8 @@ struct GoalSummaryStepView: View {
             .padding(.bottom, 100)
         }
         .safeAreaInset(edge: .bottom) {
-            Button(action: onComplete) {
-                Text("Start Tracking")
+            Button { onContinue(displayTarget) } label: {
+                Text("Continue")
                     .font(.system(.headline, design: .rounded))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
@@ -185,6 +185,6 @@ struct GoalSummaryStepView: View {
             weightKg: 80,
             activityLevel: .moderatelyActive,
             calorieDeficit: .constant(500)
-        ) { }
+        ) { _ in }
     }
 }
