@@ -140,7 +140,9 @@ struct TodayView: View {
     private var dateNavigator: some View {
         HStack {
             Button {
-                selectedDate = selectedDate.yesterday
+                withAnimation {
+                    selectedDate = selectedDate.yesterday
+                }
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.title3)
@@ -154,13 +156,14 @@ struct TodayView: View {
                 .font(BiteLogTheme.sectionTitle)
                 .foregroundStyle(BiteLogTheme.textPrimary)
                 .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.25), value: selectedDate)
                 .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
             Button {
-                selectedDate = selectedDate.tomorrow
+                withAnimation {
+                    selectedDate = selectedDate.tomorrow
+                }
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.title3)
