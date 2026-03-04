@@ -35,6 +35,10 @@ struct TodayView: View {
         todayEntries.reduce(0) { $0 + $1.fatG }
     }
 
+    private var hasEntriesForSelectedDate: Bool {
+        !todayEntries.isEmpty
+    }
+
     private var coreMeals: [MealType] {
         [.breakfast, .lunch, .dinner]
     }
@@ -71,22 +75,26 @@ struct TodayView: View {
 
                 ScrollView {
                     VStack(spacing: BiteLogTheme.cardSpacing) {
-                        CalorieRingView(
-                            consumed: totalCalories,
-                            target: profile?.dailyCalorieTarget ?? 2000,
-                            ringSize: ringSize
-                        )
-
-                        if let profile {
-                            MacroProgressView(
-                                proteinG: totalProtein,
-                                carbsG: totalCarbs,
-                                fatG: totalFat,
-                                proteinTarget: profile.proteinTargetG,
-                                carbTarget: profile.carbTargetG,
-                                fatTarget: profile.fatTargetG
+                        if hasEntriesForSelectedDate {
+                            CalorieRingView(
+                                consumed: totalCalories,
+                                target: profile?.dailyCalorieTarget ?? 2000,
+                                ringSize: ringSize
                             )
-                            .padding(.horizontal, 4)
+                            .transition(.identity)
+
+                            if let profile {
+                                MacroProgressView(
+                                    proteinG: totalProtein,
+                                    carbsG: totalCarbs,
+                                    fatG: totalFat,
+                                    proteinTarget: profile.proteinTargetG,
+                                    carbTarget: profile.carbTargetG,
+                                    fatTarget: profile.fatTargetG
+                                )
+                                .padding(.horizontal, 4)
+                                .transition(.identity)
+                            }
                         }
 
                         ForEach(coreMeals) { meal in
@@ -142,9 +150,7 @@ struct TodayView: View {
     private var dateNavigator: some View {
         HStack {
             Button {
-                withAnimation {
-                    selectedDate = selectedDate.yesterday
-                }
+                selectedDate = selectedDate.yesterday
             } label: {
                 Image(systemName: "chevron.left")
                     .font(.title3)
@@ -158,14 +164,13 @@ struct TodayView: View {
                 .font(BiteLogTheme.sectionTitle)
                 .foregroundStyle(BiteLogTheme.textPrimary)
                 .contentTransition(.numericText())
+                .animation(.smooth(duration: 0.25), value: selectedDate)
                 .accessibilityAddTraits(.isHeader)
 
             Spacer()
 
             Button {
-                withAnimation {
-                    selectedDate = selectedDate.tomorrow
-                }
+                selectedDate = selectedDate.tomorrow
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.title3)
