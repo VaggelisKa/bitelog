@@ -5,15 +5,22 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
+    @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
 
     @State private var showExportSheet = false
     @State private var exportURL: URL?
 
     private var profile: UserProfile? { profiles.first }
+    private var themePreference: ThemePreference {
+        get { ThemePreference(rawValue: themePreferenceRaw) ?? .system }
+        set { themePreferenceRaw = newValue.rawValue }
+    }
 
     var body: some View {
         NavigationStack {
             List {
+                appearanceSection
+
                 if let profile {
                     goalSection(profile)
                     profileSection(profile)
@@ -28,6 +35,22 @@ struct SettingsView: View {
                     ShareSheet(url: url)
                 }
             }
+        }
+    }
+
+    private var appearanceSection: some View {
+        Section {
+            Picker("Appearance", selection: Binding(
+                get: { themePreference },
+                set: { themePreference = $0 }
+            )) {
+                ForEach(ThemePreference.allCases, id: \.self) { preference in
+                    Text(preference.displayName).tag(preference)
+                }
+            }
+            .tint(BiteLogTheme.sage)
+        } header: {
+            Text("Appearance")
         }
     }
 

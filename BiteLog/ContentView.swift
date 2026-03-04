@@ -3,9 +3,14 @@ import SwiftData
 
 struct ContentView: View {
     @Query private var profiles: [UserProfile]
+    @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
 
     private var hasCompletedOnboarding: Bool {
         !profiles.isEmpty
+    }
+
+    private var colorScheme: ColorScheme? {
+        (ThemePreference(rawValue: themePreferenceRaw) ?? .system).colorScheme
     }
 
     var body: some View {
@@ -18,6 +23,7 @@ struct ContentView: View {
                     .transition(.opacity)
             }
         }
+        .preferredColorScheme(colorScheme)
         .animation(.smooth(duration: 0.4), value: hasCompletedOnboarding)
     }
 }
