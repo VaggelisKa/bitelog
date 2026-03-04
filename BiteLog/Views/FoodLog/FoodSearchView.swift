@@ -16,6 +16,8 @@ struct FoodSearchView: View {
     @State private var selectedFoodItem: FoodItem?
     @State private var shouldDismissAfterLog = false
     @State private var showingScanner = false
+    @State private var showingCustomFoodForm = false
+    @State private var editingCustomFood: FoodItem?
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError: String?
     @FocusState private var isSearchFocused: Bool
@@ -24,8 +26,12 @@ struct FoodSearchView: View {
         searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    private var customFoods: [FoodItem] {
+        recentFoods.filter { $0.isCustom }
+    }
+
     private var displayedRecentFoods: [FoodItem] {
-        Array(recentFoods.prefix(20))
+        Array(recentFoods.filter { !$0.isCustom }.prefix(20))
     }
 
     var body: some View {
@@ -53,6 +59,16 @@ struct FoodSearchView: View {
                     }
                     .accessibilityLabel("Close")
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingCustomFoodForm = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(BiteLogTheme.sage)
+                    }
+                    .accessibilityLabel("Create Custom Food")
+                }
             }
             .sheet(item: $selectedProduct, onDismiss: dismissIfNeeded) { product in
                 let food = searchService.createFoodItem(from: product)
@@ -72,6 +88,12 @@ struct FoodSearchView: View {
                     isNewFood: false,
                     snackIndex: snackIndex
                 ) { shouldDismissAfterLog = true }
+            }
+            .sheet(isPresented: $showingCustomFoodForm) {
+                CustomFoodFormView()
+            }
+            .sheet(item: $editingCustomFood) { food in
+                CustomFoodFormView(existingFood: food)
             }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
@@ -128,30 +150,66 @@ struct FoodSearchView: View {
 
     private var recentFoodsList: some View {
         Group {
-            if displayedRecentFoods.isEmpty {
+            if displayedRecentFoods.isEmpty && customFoods.isEmpty {
                 ContentUnavailableView(
                     "No Recent Foods",
                     systemImage: "clock",
-                    description: Text("Search above to find and log food.")
+                    description: Text("Search above or tap + to create a custom food.")
                 )
             } else {
                 List {
-                    Section {
-                        ForEach(displayedRecentFoods) { food in
-                            FoodRowView(
-                                name: food.name,
-                                brand: food.brand,
-                                caloriesPer100g: food.caloriesPer100g
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedFoodItem = food
+                    if !customFoods.isEmpty {
+                        Section {
+                            ForEach(customFoods) { food in
+                                FoodRowView(
+                                    name: food.name,
+                                    brand: food.brand,
+                                    caloriesPer100g: food.caloriesPer100g,
+                                    isCustom: true
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedFoodItem = food
+                                }
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        modelContext.delete(food)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    Button {
+                                        editingCustomFood = food
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    .tint(BiteLogTheme.sage)
+                                }
                             }
+                        } header: {
+                            Text("My Foods")
+                                .font(BiteLogTheme.caption)
+                                .foregroundStyle(BiteLogTheme.textSecondary)
                         }
-                    } header: {
-                        Text("Recent")
-                            .font(BiteLogTheme.caption)
-                            .foregroundStyle(BiteLogTheme.textSecondary)
+                    }
+
+                    if !displayedRecentFoods.isEmpty {
+                        Section {
+                            ForEach(displayedRecentFoods) { food in
+                                FoodRowView(
+                                    name: food.name,
+                                    brand: food.brand,
+                                    caloriesPer100g: food.caloriesPer100g
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedFoodItem = food
+                                }
+                            }
+                        } header: {
+                            Text("Recent")
+                                .font(BiteLogTheme.caption)
+                                .foregroundStyle(BiteLogTheme.textSecondary)
+                        }
                     }
                 }
                 .listStyle(.plain)
@@ -159,18 +217,27 @@ struct FoodSearchView: View {
         }
     }
 
+    private var matchingCustomFoods: [FoodItem] {
+        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return [] }
+        return customFoods.filter {
+            $0.name.lowercased().contains(query)
+            || ($0.brand?.lowercased().contains(query) ?? false)
+        }
+    }
+
     private var searchResultsList: some View {
         Group {
-            if searchService.isSearching {
+            if searchService.isSearching && matchingCustomFoods.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = searchService.errorMessage {
+            } else if let error = searchService.errorMessage, matchingCustomFoods.isEmpty {
                 ContentUnavailableView(
                     "Search Error",
                     systemImage: "wifi.exclamationmark",
                     description: Text(error)
                 )
-            } else if searchService.searchResults.isEmpty {
+            } else if searchService.searchResults.isEmpty && matchingCustomFoods.isEmpty {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
@@ -178,16 +245,56 @@ struct FoodSearchView: View {
                 )
             } else {
                 List {
-                    ForEach(searchService.searchResults) { product in
-                        FoodRowView(
-                            name: product.productName ?? "Unknown",
-                            brand: product.brands,
-                            caloriesPer100g: product.nutriments?.energyKcal100g ?? 0
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedProduct = product
+                    if !matchingCustomFoods.isEmpty {
+                        Section {
+                            ForEach(matchingCustomFoods) { food in
+                                FoodRowView(
+                                    name: food.name,
+                                    brand: food.brand,
+                                    caloriesPer100g: food.caloriesPer100g,
+                                    isCustom: true
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedFoodItem = food
+                                }
+                            }
+                        } header: {
+                            Text("My Foods")
+                                .font(BiteLogTheme.caption)
+                                .foregroundStyle(BiteLogTheme.textSecondary)
                         }
+                    }
+
+                    if !searchService.searchResults.isEmpty {
+                        Section {
+                            ForEach(searchService.searchResults) { product in
+                                FoodRowView(
+                                    name: product.productName ?? "Unknown",
+                                    brand: product.brands,
+                                    caloriesPer100g: product.nutriments?.energyKcal100g ?? 0
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedProduct = product
+                                }
+                            }
+                        } header: {
+                            if !matchingCustomFoods.isEmpty {
+                                Text("Search Results")
+                                    .font(BiteLogTheme.caption)
+                                    .foregroundStyle(BiteLogTheme.textSecondary)
+                            }
+                        }
+                    }
+
+                    if searchService.isSearching {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                        .listRowSeparator(.hidden)
                     }
                 }
                 .listStyle(.plain)

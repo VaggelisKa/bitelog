@@ -16,6 +16,8 @@ final class FoodItem {
     var defaultServingG: Double?
     var servingDescription: String?
 
+    var isCustom: Bool
+
     var lastUsed: Date
 
     @Relationship(deleteRule: .cascade, inverse: \FoodLogEntry.foodItem)
@@ -30,7 +32,8 @@ final class FoodItem {
         carbsPer100g: Double,
         fatPer100g: Double,
         defaultServingG: Double? = nil,
-        servingDescription: String? = nil
+        servingDescription: String? = nil,
+        isCustom: Bool = false
     ) {
         self.id = UUID()
         self.name = name
@@ -42,6 +45,7 @@ final class FoodItem {
         self.fatPer100g = fatPer100g
         self.defaultServingG = defaultServingG
         self.servingDescription = servingDescription
+        self.isCustom = isCustom
         self.lastUsed = Date()
     }
 
