@@ -66,8 +66,6 @@ struct TodayView: View {
             VStack(spacing: 0) {
                 dateNavigator
                     .padding(.horizontal, BiteLogTheme.pagePadding)
-                    
-                    
 
                 ScrollView {
                     VStack(spacing: BiteLogTheme.cardSpacing) {
