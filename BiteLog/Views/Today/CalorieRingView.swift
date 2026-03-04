@@ -17,11 +17,6 @@ struct CalorieRingView: View {
         min(progress, 1.0)
     }
 
-    private var ringLineCap: CGLineCap {
-        // Avoid the lingering "dot" artifact when progress reaches zero.
-        animatedRingProgress < 0.01 ? .butt : .round
-    }
-
     private var remaining: Int {
         max(0, target - Int(consumed))
     }
@@ -42,9 +37,10 @@ struct CalorieRingView: View {
                 .trim(from: 0, to: animatedRingProgress)
                 .stroke(
                     isOver ? BiteLogTheme.terracotta : BiteLogTheme.sage,
-                    style: StrokeStyle(lineWidth: 14, lineCap: ringLineCap)
+                    style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
+                .opacity(animatedRingProgress < 0.01 ? 0 : 1)
 
             VStack(spacing: 2) {
                 Text("\(remaining)")
