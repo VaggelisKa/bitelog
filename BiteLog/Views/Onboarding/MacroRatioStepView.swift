@@ -35,8 +35,6 @@ struct MacroRatioStepView: View {
                 }
                 .padding(.top, 8)
 
-                ratioBar
-
                 macroSlider(
                     name: "Protein",
                     ratio: $proteinRatio,
@@ -89,54 +87,6 @@ struct MacroRatioStepView: View {
                     .foregroundStyle(BiteLogTheme.textSecondary)
             }
         }
-    }
-
-    // MARK: - Ratio Bar
-
-    private var ratioBar: some View {
-        GeometryReader { geo in
-            let safeTotal = max(total, 0.01)
-            let spacing: CGFloat = 4
-            let available = geo.size.width - spacing
-
-            HStack(spacing: 2) {
-                ratioSegment(
-                    label: "P",
-                    ratio: proteinRatio,
-                    color: BiteLogTheme.proteinColor,
-                    width: available * proteinRatio / safeTotal
-                )
-                ratioSegment(
-                    label: "C",
-                    ratio: carbRatio,
-                    color: BiteLogTheme.carbColor,
-                    width: available * carbRatio / safeTotal
-                )
-                ratioSegment(
-                    label: "F",
-                    ratio: fatRatio,
-                    color: BiteLogTheme.fatColor,
-                    width: available * fatRatio / safeTotal
-                )
-            }
-        }
-        .frame(height: 32)
-        .animation(.smooth(duration: 0.25), value: proteinRatio)
-        .animation(.smooth(duration: 0.25), value: carbRatio)
-        .animation(.smooth(duration: 0.25), value: fatRatio)
-    }
-
-    private func ratioSegment(label: String, ratio: Double, color: Color, width: CGFloat) -> some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(color.opacity(0.85))
-            Text("\(label) \(Int(ratio * 100))%")
-                .font(.system(.caption2, design: .rounded, weight: .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.6)
-        }
-        .frame(width: max(0, width))
     }
 
     // MARK: - Macro Slider
