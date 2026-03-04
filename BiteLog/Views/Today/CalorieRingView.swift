@@ -6,10 +6,15 @@ struct CalorieRingView: View {
     let ringSize: CGFloat
 
     @ScaledMetric private var numberSize: CGFloat = 44
+    @State private var animatedRingProgress: Double = 0
 
     private var progress: Double {
         guard target > 0 else { return 0 }
         return min(consumed / Double(target), 1.5)
+    }
+
+    private var displayedRingProgress: Double {
+        min(progress, 1.0)
     }
 
     private var remaining: Int {
@@ -29,13 +34,13 @@ struct CalorieRingView: View {
                 )
 
             Circle()
-                .trim(from: 0, to: min(progress, 1.0))
+                .trim(from: 0, to: animatedRingProgress)
                 .stroke(
                     isOver ? BiteLogTheme.terracotta : BiteLogTheme.sage,
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .animation(.smooth(duration: 0.6), value: progress)
+                .opacity(animatedRingProgress < 0.01 ? 0 : 1)
 
             VStack(spacing: 2) {
                 Text("\(remaining)")
@@ -54,6 +59,14 @@ struct CalorieRingView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityValue("\(Int(consumed)) of \(target) calories consumed")
+        .onAppear {
+            animatedRingProgress = displayedRingProgress
+        }
+        .onChange(of: displayedRingProgress) { _, newProgress in
+            withAnimation(.smooth(duration: 0.45)) {
+                animatedRingProgress = newProgress
+            }
+        }
     }
 
     private var accessibilityDescription: String {
