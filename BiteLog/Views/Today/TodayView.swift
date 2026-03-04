@@ -35,10 +35,6 @@ struct TodayView: View {
         todayEntries.reduce(0) { $0 + $1.fatG }
     }
 
-    private var hasEntriesForSelectedDate: Bool {
-        !todayEntries.isEmpty
-    }
-
     private var coreMeals: [MealType] {
         [.breakfast, .lunch, .dinner]
     }
@@ -70,31 +66,25 @@ struct TodayView: View {
             VStack(spacing: 0) {
                 dateNavigator
                     .padding(.horizontal, BiteLogTheme.pagePadding)
-                    
-                    
 
                 ScrollView {
                     VStack(spacing: BiteLogTheme.cardSpacing) {
-                        if hasEntriesForSelectedDate {
-                            CalorieRingView(
-                                consumed: totalCalories,
-                                target: profile?.dailyCalorieTarget ?? 2000,
-                                ringSize: ringSize
-                            )
-                            .transition(.identity)
+                        CalorieRingView(
+                            consumed: totalCalories,
+                            target: profile?.dailyCalorieTarget ?? 2000,
+                            ringSize: ringSize
+                        )
 
-                            if let profile {
-                                MacroProgressView(
-                                    proteinG: totalProtein,
-                                    carbsG: totalCarbs,
-                                    fatG: totalFat,
-                                    proteinTarget: profile.proteinTargetG,
-                                    carbTarget: profile.carbTargetG,
-                                    fatTarget: profile.fatTargetG
-                                )
-                                .padding(.horizontal, 4)
-                                .transition(.identity)
-                            }
+                        if let profile {
+                            MacroProgressView(
+                                proteinG: totalProtein,
+                                carbsG: totalCarbs,
+                                fatG: totalFat,
+                                proteinTarget: profile.proteinTargetG,
+                                carbTarget: profile.carbTargetG,
+                                fatTarget: profile.fatTargetG
+                            )
+                            .padding(.horizontal, 4)
                         }
 
                         ForEach(coreMeals) { meal in
