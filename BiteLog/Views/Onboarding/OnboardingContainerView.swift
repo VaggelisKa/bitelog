@@ -6,6 +6,7 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
     case personalInfo
     case activityLevel
     case goalSummary
+    case macroRatios
 }
 
 struct OnboardingContainerView: View {
@@ -18,6 +19,10 @@ struct OnboardingContainerView: View {
     @State private var weightKg: Double = 75
     @State private var activityLevel: ActivityLevel = .moderatelyActive
     @State private var calorieDeficit: Double = 500
+    @State private var finalCalorieTarget: Int = 2000
+    @State private var proteinRatio: Double = 0.30
+    @State private var carbRatio: Double = 0.40
+    @State private var fatRatio: Double = 0.30
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -48,7 +53,17 @@ struct OnboardingContainerView: View {
                         heightCm: heightCm,
                         weightKg: weightKg,
                         activityLevel: activityLevel,
-                        calorieDeficit: $calorieDeficit,
+                        calorieDeficit: $calorieDeficit
+                    ) { target in
+                        finalCalorieTarget = target
+                        path.append(.macroRatios)
+                    }
+                case .macroRatios:
+                    MacroRatioStepView(
+                        calorieTarget: finalCalorieTarget,
+                        proteinRatio: $proteinRatio,
+                        carbRatio: $carbRatio,
+                        fatRatio: $fatRatio,
                         onComplete: saveProfile
                     )
                 }
@@ -57,17 +72,16 @@ struct OnboardingContainerView: View {
     }
 
     private func saveProfile() {
-        let bmr = NutritionCalculator.bmr(sex: sex, weightKg: weightKg, heightCm: heightCm, age: age)
-        let tdee = NutritionCalculator.tdee(bmr: bmr, activity: activityLevel)
-        let target = NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
-
         let profile = UserProfile(
             age: age,
             sex: sex,
             heightCm: heightCm,
             weightKg: weightKg,
             activityLevel: activityLevel,
-            dailyCalorieTarget: target
+            dailyCalorieTarget: finalCalorieTarget,
+            proteinRatio: proteinRatio,
+            carbRatio: carbRatio,
+            fatRatio: fatRatio
         )
         modelContext.insert(profile)
     }
