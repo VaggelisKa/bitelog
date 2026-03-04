@@ -59,6 +59,16 @@ struct FoodSearchView: View {
                     }
                     .accessibilityLabel("Close")
                 }
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingCustomFoodForm = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(BiteLogTheme.sage)
+                    }
+                    .accessibilityLabel("Create Custom Food")
+                }
             }
             .sheet(item: $selectedProduct, onDismiss: dismissIfNeeded) { product in
                 let food = searchService.createFoodItem(from: product)
@@ -141,66 +151,44 @@ struct FoodSearchView: View {
     private var recentFoodsList: some View {
         Group {
             if displayedRecentFoods.isEmpty && customFoods.isEmpty {
-                VStack(spacing: 20) {
-                    ContentUnavailableView(
-                        "No Recent Foods",
-                        systemImage: "clock",
-                        description: Text("Search above or create a custom food.")
-                    )
-
-                    Button {
-                        showingCustomFoodForm = true
-                    } label: {
-                        Label("Create Custom Food", systemImage: "plus.circle.fill")
-                            .font(.system(.body, design: .rounded, weight: .medium))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                    }
-                    .buttonStyle(.glassProminent)
-                    .tint(BiteLogTheme.sage)
-                    .padding(.horizontal, BiteLogTheme.pagePadding)
-                }
+                ContentUnavailableView(
+                    "No Recent Foods",
+                    systemImage: "clock",
+                    description: Text("Search above or tap + to create a custom food.")
+                )
             } else {
                 List {
-                    Section {
-                        ForEach(customFoods) { food in
-                            FoodRowView(
-                                name: food.name,
-                                brand: food.brand,
-                                caloriesPer100g: food.caloriesPer100g,
-                                isCustom: true
-                            )
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                selectedFoodItem = food
-                            }
-                            .swipeActions(edge: .trailing) {
-                                Button(role: .destructive) {
-                                    modelContext.delete(food)
-                                } label: {
-                                    Label("Delete", systemImage: "trash")
+                    if !customFoods.isEmpty {
+                        Section {
+                            ForEach(customFoods) { food in
+                                FoodRowView(
+                                    name: food.name,
+                                    brand: food.brand,
+                                    caloriesPer100g: food.caloriesPer100g,
+                                    isCustom: true
+                                )
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedFoodItem = food
                                 }
-                                Button {
-                                    editingCustomFood = food
-                                } label: {
-                                    Label("Edit", systemImage: "pencil")
+                                .swipeActions(edge: .trailing) {
+                                    Button(role: .destructive) {
+                                        modelContext.delete(food)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                    Button {
+                                        editingCustomFood = food
+                                    } label: {
+                                        Label("Edit", systemImage: "pencil")
+                                    }
+                                    .tint(BiteLogTheme.sage)
                                 }
-                                .tint(BiteLogTheme.sage)
                             }
-                        }
-                    } header: {
-                        HStack {
+                        } header: {
                             Text("My Foods")
                                 .font(BiteLogTheme.caption)
                                 .foregroundStyle(BiteLogTheme.textSecondary)
-                            Spacer()
-                            Button {
-                                showingCustomFoodForm = true
-                            } label: {
-                                Label("New", systemImage: "plus.circle.fill")
-                                    .font(BiteLogTheme.caption)
-                                    .foregroundStyle(BiteLogTheme.sage)
-                            }
                         }
                     }
 
