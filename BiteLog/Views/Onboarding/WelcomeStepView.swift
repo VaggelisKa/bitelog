@@ -1,19 +1,105 @@
 import SwiftUI
 
+struct WelcomeCardsGraphic: View {
+    @State private var showBack = false
+    @State private var showMiddle = false
+    @State private var showFront = false
+    @State private var expandToList = false
+    
+    var body: some View {
+        ZStack {
+            // Back card (Dinner)
+            LogCardMock(icon: "moon.stars.fill", title: "Dinner", cals: "650", color: BiteLogTheme.terracotta)
+                .scaleEffect(expandToList ? 0.9 : 0.85)
+                .offset(y: !showBack ? 0 : (expandToList ? 85 : -40))
+                .opacity(showBack ? (expandToList ? 1.0 : 0.6) : 0)
+                .zIndex(1)
+                
+            // Middle card (Lunch)
+            LogCardMock(icon: "sun.max.fill", title: "Lunch", cals: "820", color: BiteLogTheme.carbColor)
+                .scaleEffect(expandToList ? 0.9 : 0.92)
+                .offset(y: !showMiddle ? 20 : (expandToList ? 0 : -15))
+                .opacity(showMiddle ? (expandToList ? 1.0 : 0.8) : 0)
+                .zIndex(2)
+                
+            // Front card (Breakfast)
+            LogCardMock(icon: "sunrise.fill", title: "Breakfast", cals: "450", color: BiteLogTheme.sage)
+                .scaleEffect(expandToList ? 0.9 : 1.0)
+                .offset(y: !showFront ? 40 : (expandToList ? -85 : 10))
+                .opacity(showFront ? 1.0 : 0)
+                .shadow(color: .black.opacity(expandToList ? 0.04 : 0.08), radius: 15, y: 8)
+                .zIndex(3)
+        }
+        .frame(height: 250)
+        .onAppear {
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.1)) {
+                showBack = true
+            }
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.25)) {
+                showMiddle = true
+            }
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8).delay(0.4)) {
+                showFront = true
+            }
+            
+            // Pause, then slide them out into a list
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.75).delay(1.5)) {
+                expandToList = true
+            }
+        }
+    }
+}
+
+struct LogCardMock: View {
+    let icon: String
+    let title: String
+    let cals: String
+    let color: Color
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: icon)
+                .font(.system(size: 20, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(color)
+                .clipShape(Circle())
+                
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.system(.headline, design: .rounded))
+                    .foregroundStyle(BiteLogTheme.textPrimary)
+                Text("\(cals) kcal")
+                    .font(.system(.subheadline, design: .rounded, weight: .medium))
+                    .foregroundStyle(BiteLogTheme.textSecondary)
+            }
+            
+            Spacer()
+            
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 24))
+                .foregroundStyle(BiteLogTheme.sage)
+        }
+        .padding(16)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+        )
+        .padding(.horizontal, 40)
+    }
+}
+
 struct WelcomeStepView: View {
     var onContinue: () -> Void
-
-    @ScaledMetric private var iconSize: CGFloat = 80
 
     var body: some View {
         VStack(spacing: 0) {
             Spacer()
 
-            VStack(spacing: 24) {
-                Image(systemName: "flame.fill")
-                    .font(.system(size: iconSize))
-                    .foregroundStyle(BiteLogTheme.sage)
-                    .padding(.bottom, 8)
+            VStack(spacing: 32) {
+                WelcomeCardsGraphic()
 
                 VStack(spacing: 12) {
                     Text("BiteLog")
