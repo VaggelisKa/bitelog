@@ -1,0 +1,345 @@
+import SwiftUI
+import SwiftData
+
+struct CustomFoodFormView: View {
+    var existingFood: FoodItem?
+    var onSaved: ((FoodItem) -> Void)?
+
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var name = ""
+    @State private var brand = ""
+    @State private var caloriesPerServing = ""
+    @State private var proteinPerServing = ""
+    @State private var carbsPerServing = ""
+    @State private var fatPerServing = ""
+    @State private var servingSizeGrams = "100"
+    @State private var showingDeleteConfirmation = false
+
+    @FocusState private var focusedField: Field?
+
+    private enum Field: Hashable {
+        case name, brand, calories, protein, carbs, fat, servingSize
+    }
+
+    private var isEditing: Bool { existingFood != nil }
+
+    private var canSave: Bool {
+        !name.trimmingCharacters(in: .whitespaces).isEmpty
+        && (Double(caloriesPerServing) ?? -1) >= 0
+        && !caloriesPerServing.isEmpty
+    }
+
+    private var servingGrams: Double {
+        Double(servingSizeGrams) ?? 100
+    }
+
+    private var previewCalories: Double {
+        Double(caloriesPerServing) ?? 0
+    }
+
+    private var previewProtein: Double {
+        Double(proteinPerServing) ?? 0
+    }
+
+    private var previewCarbs: Double {
+        Double(carbsPerServing) ?? 0
+    }
+
+    private var previewFat: Double {
+        Double(fatPerServing) ?? 0
+    }
+
+    init(existingFood: FoodItem? = nil, onSaved: ((FoodItem) -> Void)? = nil) {
+        self.existingFood = existingFood
+        self.onSaved = onSaved
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    nameSection
+
+                    caloriePreviewCard
+
+                    nutritionSection
+
+                    servingSizeSection
+
+                    if isEditing {
+                        deleteSection
+                    }
+                }
+                .padding(.horizontal, BiteLogTheme.pagePadding)
+                .padding(.bottom, 100)
+            }
+            .navigationTitle(isEditing ? "Edit Custom Food" : "Create Custom Food")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 16, weight: .medium))
+                    }
+                    .accessibilityLabel("Close")
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                Button(action: saveFood) {
+                    Text(isEditing ? "Save Changes" : "Save Custom Food")
+                        .font(.system(.headline, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(BiteLogTheme.sage)
+                .disabled(!canSave)
+                .opacity(canSave ? 1.0 : 0.5)
+                .padding(.horizontal, BiteLogTheme.pagePadding)
+                .padding(.bottom, 16)
+            }
+            .onAppear(perform: populateFromExisting)
+            .confirmationDialog("Delete Custom Food", isPresented: $showingDeleteConfirmation) {
+                Button("Delete", role: .destructive, action: deleteFood)
+            } message: {
+                Text("This will permanently remove \"\(name)\" from your custom foods.")
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private var nameSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("FOOD DETAILS")
+                .font(BiteLogTheme.caption)
+                .foregroundStyle(BiteLogTheme.textSecondary)
+
+            TextField("Food name (e.g. Nick's Pizza)", text: $name)
+                .font(BiteLogTheme.bodyText)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.words)
+                .focused($focusedField, equals: .name)
+
+            TextField("Brand (optional)", text: $brand)
+                .font(BiteLogTheme.bodyText)
+                .textFieldStyle(.roundedBorder)
+                .textInputAutocapitalization(.words)
+                .focused($focusedField, equals: .brand)
+        }
+        .glassCard(cornerRadius: BiteLogTheme.smallCornerRadius)
+    }
+
+    private var caloriePreviewCard: some View {
+        VStack(spacing: 4) {
+            Text("\(Int(previewCalories))")
+                .font(.system(size: 48, weight: .bold, design: .rounded))
+                .foregroundStyle(BiteLogTheme.sage)
+                .contentTransition(.numericText())
+                .animation(.smooth(duration: 0.3), value: Int(previewCalories))
+
+            Text("calories per serving")
+                .font(BiteLogTheme.bodyText)
+                .foregroundStyle(BiteLogTheme.textSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .glassCard()
+    }
+
+    private var nutritionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("NUTRITION PER SERVING")
+                .font(BiteLogTheme.caption)
+                .foregroundStyle(BiteLogTheme.textSecondary)
+
+            nutritionField(
+                label: "Calories",
+                text: $caloriesPerServing,
+                unit: "kcal",
+                focus: .calories,
+                required: true
+            )
+
+            nutritionField(
+                label: "Protein",
+                text: $proteinPerServing,
+                unit: "g",
+                focus: .protein
+            )
+
+            nutritionField(
+                label: "Carbs",
+                text: $carbsPerServing,
+                unit: "g",
+                focus: .carbs
+            )
+
+            nutritionField(
+                label: "Fat",
+                text: $fatPerServing,
+                unit: "g",
+                focus: .fat
+            )
+        }
+        .glassCard(cornerRadius: BiteLogTheme.smallCornerRadius)
+    }
+
+    private func nutritionField(
+        label: String,
+        text: Binding<String>,
+        unit: String,
+        focus: Field,
+        required: Bool = false
+    ) -> some View {
+        HStack {
+            HStack(spacing: 4) {
+                Text(label)
+                    .font(BiteLogTheme.bodyText)
+                    .foregroundStyle(BiteLogTheme.textPrimary)
+                if required {
+                    Text("*")
+                        .font(BiteLogTheme.bodyText)
+                        .foregroundStyle(BiteLogTheme.terracotta)
+                }
+            }
+            .frame(width: 80, alignment: .leading)
+
+            TextField("0", text: text)
+                .font(BiteLogTheme.numericBody)
+                .keyboardType(.decimalPad)
+                .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: focus)
+
+            Text(unit)
+                .font(BiteLogTheme.caption)
+                .foregroundStyle(BiteLogTheme.textSecondary)
+                .frame(width: 36, alignment: .leading)
+        }
+    }
+
+    private var servingSizeSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("SERVING SIZE")
+                .font(BiteLogTheme.caption)
+                .foregroundStyle(BiteLogTheme.textSecondary)
+
+            HStack {
+                Text("One serving")
+                    .font(BiteLogTheme.bodyText)
+                    .foregroundStyle(BiteLogTheme.textPrimary)
+
+                Spacer()
+
+                TextField("100", text: $servingSizeGrams)
+                    .font(BiteLogTheme.numericBody)
+                    .keyboardType(.numberPad)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 80)
+                    .focused($focusedField, equals: .servingSize)
+
+                Text("g")
+                    .font(BiteLogTheme.caption)
+                    .foregroundStyle(BiteLogTheme.textSecondary)
+            }
+
+            Text("The nutrition values above are for one serving of this size.")
+                .font(BiteLogTheme.caption)
+                .foregroundStyle(BiteLogTheme.textSecondary)
+        }
+        .glassCard(cornerRadius: BiteLogTheme.smallCornerRadius)
+    }
+
+    private var deleteSection: some View {
+        Button(role: .destructive) {
+            showingDeleteConfirmation = true
+        } label: {
+            HStack {
+                Image(systemName: "trash")
+                Text("Delete Custom Food")
+            }
+            .font(.system(.body, weight: .medium))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.red)
+        .glassCard(cornerRadius: BiteLogTheme.smallCornerRadius)
+    }
+
+    private func populateFromExisting() {
+        guard let food = existingFood else {
+            focusedField = .name
+            return
+        }
+        name = food.name
+        brand = food.brand ?? ""
+        let serving = food.defaultServingG ?? 100
+        servingSizeGrams = "\(Int(serving))"
+        caloriesPerServing = "\(Int(food.calories(forGrams: serving)))"
+        let protein = food.protein(forGrams: serving)
+        let carbs = food.carbs(forGrams: serving)
+        let fat = food.fat(forGrams: serving)
+        if protein > 0 { proteinPerServing = String(format: "%.1f", protein) }
+        if carbs > 0 { carbsPerServing = String(format: "%.1f", carbs) }
+        if fat > 0 { fatPerServing = String(format: "%.1f", fat) }
+    }
+
+    private func saveFood() {
+        let serving = servingGrams > 0 ? servingGrams : 100
+        let cal = Double(caloriesPerServing) ?? 0
+        let pro = Double(proteinPerServing) ?? 0
+        let carb = Double(carbsPerServing) ?? 0
+        let f = Double(fatPerServing) ?? 0
+
+        let calPer100 = cal / serving * 100
+        let proPer100 = pro / serving * 100
+        let carbPer100 = carb / serving * 100
+        let fPer100 = f / serving * 100
+
+        if let food = existingFood {
+            food.name = name.trimmingCharacters(in: .whitespaces)
+            food.brand = brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces)
+            food.caloriesPer100g = calPer100
+            food.proteinPer100g = proPer100
+            food.carbsPer100g = carbPer100
+            food.fatPer100g = fPer100
+            food.defaultServingG = serving
+            food.servingDescription = "1 serving"
+            onSaved?(food)
+        } else {
+            let food = FoodItem(
+                name: name.trimmingCharacters(in: .whitespaces),
+                brand: brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces),
+                caloriesPer100g: calPer100,
+                proteinPer100g: proPer100,
+                carbsPer100g: carbPer100,
+                fatPer100g: fPer100,
+                defaultServingG: serving,
+                servingDescription: "1 serving",
+                isCustom: true
+            )
+            modelContext.insert(food)
+            onSaved?(food)
+        }
+        dismiss()
+    }
+
+    private func deleteFood() {
+        if let food = existingFood {
+            modelContext.delete(food)
+        }
+        dismiss()
+    }
+}
+
+#Preview {
+    CustomFoodFormView()
+        .modelContainer(
+            for: [UserProfile.self, FoodItem.self, FoodLogEntry.self],
+            inMemory: true
+        )
+}

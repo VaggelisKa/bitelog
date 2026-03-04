@@ -4,14 +4,26 @@ struct FoodRowView: View {
     let name: String
     let brand: String?
     let caloriesPer100g: Double
+    var isCustom: Bool = false
 
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                Text(name)
-                    .font(BiteLogTheme.itemTitle)
-                    .foregroundStyle(BiteLogTheme.textPrimary)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(name)
+                        .font(BiteLogTheme.itemTitle)
+                        .foregroundStyle(BiteLogTheme.textPrimary)
+                        .lineLimit(1)
+
+                    if isCustom {
+                        Text("CUSTOM")
+                            .font(.system(size: 9, weight: .bold, design: .rounded))
+                            .foregroundStyle(BiteLogTheme.sage)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(BiteLogTheme.sage.opacity(0.15), in: .capsule)
+                    }
+                }
 
                 if let brand, !brand.isEmpty {
                     Text(brand)
@@ -41,5 +53,6 @@ struct FoodRowView: View {
         FoodRowView(name: "Rugbroed", brand: "Schulstad", caloriesPer100g: 210)
         FoodRowView(name: "Skyr", brand: "Arla", caloriesPer100g: 63)
         FoodRowView(name: "Chicken Breast", brand: nil, caloriesPer100g: 165)
+        FoodRowView(name: "Nick's Pizza", brand: "Homemade", caloriesPer100g: 267, isCustom: true)
     }
 }
