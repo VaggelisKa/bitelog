@@ -133,6 +133,7 @@ struct TodayView: View {
             }
             .sheet(isPresented: $showingFoodSearch) {
                 FoodSearchView(mealType: selectedMealType, logDate: selectedDate, snackIndex: selectedSnackIndex)
+                    .presentationDragIndicator(.visible)
             }
         }
     }
