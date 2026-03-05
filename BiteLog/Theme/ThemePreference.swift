@@ -13,6 +13,14 @@ enum ThemePreference: String, CaseIterable {
         }
     }
 
+    var icon: String {
+        switch self {
+        case .light: return "sun.max.fill"
+        case .dark: return "moon.fill"
+        case .system: return "circle.lefthalf.filled"
+        }
+    }
+
     var colorScheme: ColorScheme? {
         switch self {
         case .light: return .light

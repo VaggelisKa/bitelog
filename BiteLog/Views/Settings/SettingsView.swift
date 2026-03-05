@@ -11,10 +11,6 @@ struct SettingsView: View {
     @State private var exportURL: URL?
 
     private var profile: UserProfile? { profiles.first }
-    private var themePreference: ThemePreference {
-        get { ThemePreference(rawValue: themePreferenceRaw) ?? .system }
-        set { themePreferenceRaw = newValue.rawValue }
-    }
 
     var body: some View {
         NavigationStack {
@@ -40,12 +36,10 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
-            Picker("Appearance", selection: Binding(
-                get: { themePreference },
-                set: { themePreference = $0 }
-            )) {
+            Picker("Appearance", selection: $themePreferenceRaw) {
                 ForEach(ThemePreference.allCases, id: \.self) { preference in
-                    Text(preference.displayName).tag(preference)
+                    Label(preference.displayName, systemImage: preference.icon)
+                        .tag(preference.rawValue)
                 }
             }
             .tint(BiteLogTheme.sage)
@@ -128,6 +122,17 @@ struct SettingsView: View {
             Text("About")
         }
     }
+}
+
+#Preview {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: UserProfile.self, FoodItem.self, FoodLogEntry.self, configurations: config)
+    let context = ModelContext(container)
+    let profile = UserProfile(age: 30, sex: .male, heightCm: 175, weightKg: 70, activityLevel: .moderatelyActive, dailyCalorieTarget: 2000)
+    context.insert(profile)
+    try? context.save()
+    return SettingsView()
+        .modelContainer(container)
 }
 
 private struct ShareSheet: UIViewControllerRepresentable {
