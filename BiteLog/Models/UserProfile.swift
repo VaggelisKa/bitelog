@@ -3,26 +3,26 @@ import SwiftData
 
 @Model
 final class UserProfile {
-    var id: UUID
-    var age: Int
-    var sex: Sex
-    var heightCm: Double
-    var weightKg: Double
-    var activityLevel: ActivityLevel
+    var id: UUID = UUID()
+    var age: Int = 0
+    var sex: Sex = .male
+    var heightCm: Double = 0
+    var weightKg: Double = 0
+    var activityLevel: ActivityLevel = .sedentary
 
-    var bmr: Double
-    var tdee: Double
-    var dailyCalorieTarget: Int
-    var manualOverride: Bool
+    var bmr: Double = 0
+    var tdee: Double = 0
+    var dailyCalorieTarget: Int = 0
+    var manualOverride: Bool = false
 
-    var calorieDeficit: Double
+    var calorieDeficit: Double = 500
 
-    var proteinTargetG: Double
-    var carbTargetG: Double
-    var fatTargetG: Double
+    var proteinTargetG: Double = 0
+    var carbTargetG: Double = 0
+    var fatTargetG: Double = 0
 
-    var createdAt: Date
-    var updatedAt: Date
+    var createdAt: Date = Date()
+    var updatedAt: Date = Date()
 
     init(
         age: Int,

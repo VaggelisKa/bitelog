@@ -3,20 +3,20 @@ import SwiftData
 
 @Model
 final class FoodLogEntry {
-    var id: UUID
-    var date: Date
-    var mealType: MealType
-    var snackIndex: Int
+    var id: UUID = UUID()
+    var date: Date = Date()
+    var mealType: MealType = .breakfast
+    var snackIndex: Int = 0
 
     var foodItem: FoodItem?
 
-    var portionGrams: Double
-    var calories: Double
-    var proteinG: Double
-    var carbsG: Double
-    var fatG: Double
+    var portionGrams: Double = 0
+    var calories: Double = 0
+    var proteinG: Double = 0
+    var carbsG: Double = 0
+    var fatG: Double = 0
 
-    var foodName: String
+    var foodName: String = ""
 
     init(
         date: Date,

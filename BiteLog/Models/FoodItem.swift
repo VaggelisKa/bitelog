@@ -3,22 +3,22 @@ import SwiftData
 
 @Model
 final class FoodItem {
-    var id: UUID
+    var id: UUID = UUID()
     var barcode: String?
-    var name: String
+    var name: String = ""
     var brand: String?
 
-    var caloriesPer100g: Double
-    var proteinPer100g: Double
-    var carbsPer100g: Double
-    var fatPer100g: Double
+    var caloriesPer100g: Double = 0
+    var proteinPer100g: Double = 0
+    var carbsPer100g: Double = 0
+    var fatPer100g: Double = 0
 
     var defaultServingG: Double?
     var servingDescription: String?
 
-    var isCustom: Bool
+    var isCustom: Bool = false
 
-    var lastUsed: Date
+    var lastUsed: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \FoodLogEntry.foodItem)
     var logEntries: [FoodLogEntry]?
