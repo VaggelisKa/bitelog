@@ -75,6 +75,7 @@ struct HistoryView: View {
 
 enum HistoryRange: String, CaseIterable, Identifiable {
     case week
+    case twoWeeks
     case month
 
     var id: String { rawValue }
@@ -82,6 +83,7 @@ enum HistoryRange: String, CaseIterable, Identifiable {
     var days: Int {
         switch self {
         case .week: 7
+        case .twoWeeks: 14
         case .month: 30
         }
     }
@@ -89,6 +91,7 @@ enum HistoryRange: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .week: "7 Days"
+        case .twoWeeks: "14 Days"
         case .month: "30 Days"
         }
     }
