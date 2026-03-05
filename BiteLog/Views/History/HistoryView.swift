@@ -39,13 +39,13 @@ struct HistoryView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: BiteLogTheme.cardSpacing) {
-                    rangePicker
-
                     WeeklyAverageCard(
                         average: weeklyAverage,
                         target: dailyTarget,
                         dailyData: currentWeekDailyTotals
                     )
+
+                    rangePicker
 
                     LazyVStack(spacing: 10) {
                         ForEach(dates, id: \.self) { date in
@@ -122,7 +122,7 @@ enum HistoryRange: String, CaseIterable, Identifiable {
 
     let calendar = Calendar.current
     // Vary daily totals: ~1800–2300 so weekly average and day rows show meaningful data
-    let dailyCalorieTargets: [Double] = [2150, 1880, 2200, 1650, 1950, 2320, 1780, 2050, 1900, 2180]
+    let dailyCalorieTargets: [Double] = [2150, 1880, 1200, 1650, 1950, 2320, 1780, 2050, 1900, 1180]
     let mealPortions: [(FoodItem, MealType, Double)] = [
         (oatmeal, .breakfast, 80),
         (apple, .breakfast, 120),

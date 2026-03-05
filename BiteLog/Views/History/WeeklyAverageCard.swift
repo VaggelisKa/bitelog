@@ -6,8 +6,6 @@ struct WeeklyAverageCard: View {
     let target: Int
     let dailyData: [(date: Date, calories: Double)]
 
-    @State private var showChart = false
-
     private var difference: Int {
         Int(average) - target
     }
@@ -15,11 +13,33 @@ struct WeeklyAverageCard: View {
     private var differenceLabel: String {
         if average == 0 { return "No data yet" }
         if difference > 0 {
-            return "+\(difference) kcal over target"
+            return "+\(difference) over target"
         } else if difference < 0 {
-            return "\(abs(difference)) kcal under target"
+            return "\(abs(difference)) under target"
         }
-        return "Right on target"
+        return "On target"
+    }
+
+    private var weeklyTotal: Double {
+        dailyData.reduce(0) { $0 + $1.calories }
+    }
+
+    private var daysWithData: Int {
+        dailyData.filter { $0.calories > 0 }.count
+    }
+
+    private var totalDifference: Int {
+        Int(weeklyTotal) - (target * daysWithData)
+    }
+
+    private var totalDifferenceLabel: String {
+        if weeklyTotal == 0 { return "No data yet" }
+        if totalDifference > 0 {
+            return "+\(totalDifference) over"
+        } else if totalDifference < 0 {
+            return "\(abs(totalDifference)) under"
+        }
+        return "On target"
     }
 
     private var differenceColor: Color {
@@ -27,77 +47,94 @@ struct WeeklyAverageCard: View {
         return difference > 0 ? BiteLogTheme.terracotta : BiteLogTheme.sage
     }
 
-    var body: some View {
-        VStack(spacing: 8) {
-            header
-
-            if showChart {
-                chartContent
-            } else {
-                averageContent
-            }
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 20)
-        .glassCard()
-        .animation(.easeInOut(duration: 0.25), value: showChart)
+    private var totalDifferenceColor: Color {
+        if weeklyTotal == 0 { return BiteLogTheme.textSecondary }
+        return totalDifference > 0 ? BiteLogTheme.terracotta : BiteLogTheme.sage
     }
 
-    // MARK: - Header with toggle
+    private var hasAnyData: Bool {
+        average > 0 || weeklyTotal > 0
+    }
 
-    private var header: some View {
-        HStack {
-            Spacer()
-            Text(showChart ? "This Week" : "Weekly Average")
+    var body: some View {
+        VStack(spacing: 12) {
+            Text("This Week")
                 .font(BiteLogTheme.caption)
                 .foregroundStyle(BiteLogTheme.textSecondary)
                 .textCase(.uppercase)
-            Spacer()
-        }
-        .overlay(alignment: .trailing) {
-            Button {
-                showChart.toggle()
-            } label: {
-                Image(systemName: showChart ? "number" : "chart.bar.fill")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(BiteLogTheme.textSecondary)
-                    .contentTransition(.symbolEffect(.replace))
+
+            if hasAnyData {
+                averageSummary
             }
+
+            chartContent
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 16)
+        .glassCard()
+    }
+
+    // MARK: - Compact average summary
+
+    private var averageSummary: some View {
+        HStack(alignment: .top, spacing: 0) {
+            statColumn(
+                value: average > 0 ? "\(Int(average))" : "—",
+                unit: "kcal/day",
+                detail: differenceLabel,
+                detailColor: differenceColor
+            )
+
+            Spacer()
+
+            statColumn(
+                value: weeklyTotal > 0
+                    ? "\(Int(weeklyTotal).formatted())"
+                    : "—",
+                unit: "kcal total",
+                detail: totalDifferenceLabel,
+                detailColor: totalDifferenceColor
+            )
         }
     }
 
-    // MARK: - Average content (original view)
+    private func statColumn(
+        value: String,
+        unit: String,
+        detail: String?,
+        detailColor: Color
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                Text(value)
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(
+                        value == "—"
+                            ? BiteLogTheme.textSecondary
+                            : BiteLogTheme.textPrimary
+                    )
 
-    private var averageContent: some View {
-        VStack(spacing: 8) {
-            if average > 0 {
-                Text("\(Int(average))")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(BiteLogTheme.textPrimary)
-
-                Text("kcal/day")
+                Text(unit)
                     .font(BiteLogTheme.caption)
                     .foregroundStyle(BiteLogTheme.textSecondary)
-            } else {
-                Text("—")
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(BiteLogTheme.textSecondary)
             }
 
-            Text(differenceLabel)
-                .font(BiteLogTheme.numericCaption)
-                .foregroundStyle(differenceColor)
+            if let detail {
+                Text(detail)
+                    .font(BiteLogTheme.numericCaption)
+                    .foregroundStyle(detailColor)
+            }
         }
     }
 
-    // MARK: - Bar chart content
+    // MARK: - Bar chart
 
     private var chartContent: some View {
         let today = Calendar.current.startOfDay(for: .now)
         let pastOrTodayData = dailyData.filter { $0.date <= today }
         let maxCalories = max(
             pastOrTodayData.map(\.calories).max() ?? 0,
-            Double(target)
+            max(Double(target), average)
         )
 
         return Chart {
@@ -122,15 +159,26 @@ struct WeeklyAverageCard: View {
                         .font(.system(size: 9, weight: .medium))
                         .foregroundStyle(BiteLogTheme.textSecondary)
                 }
+
+            if average > 0 {
+                RuleMark(y: .value("Avg", average))
+                    .lineStyle(StrokeStyle(lineWidth: 1.2, dash: [3, 3]))
+                    .foregroundStyle(BiteLogTheme.terracotta.opacity(0.8))
+                    .annotation(position: .bottom, alignment: .trailing) {
+                        Text("Avg")
+                            .font(.system(size: 9, weight: .medium))
+                            .foregroundStyle(BiteLogTheme.terracotta)
+                    }
+            }
         }
         .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { value in
+            AxisMarks(values: .stride(by: .day)) { _ in
                 AxisValueLabel(format: .dateTime.weekday(.abbreviated))
                     .font(.system(size: 10))
             }
         }
         .chartYAxis {
-            AxisMarks(position: .leading) { value in
+            AxisMarks(position: .leading) { _ in
                 AxisGridLine()
                 AxisValueLabel()
                     .font(.system(size: 10))
@@ -138,8 +186,7 @@ struct WeeklyAverageCard: View {
         }
         .chartYScale(domain: 0 ... (maxCalories * 1.15))
         .chartXScale(domain: dailyData.first!.date ... dailyData.last!.date)
-        .frame(height: 180)
-        .padding(.top, 4)
+        .frame(height: 160)
     }
 }
 
