@@ -79,6 +79,7 @@ struct OnboardingContainerView: View {
             weightKg: weightKg,
             activityLevel: activityLevel,
             dailyCalorieTarget: finalCalorieTarget,
+            calorieDeficit: calorieDeficit,
             proteinRatio: proteinRatio,
             carbRatio: carbRatio,
             fatRatio: fatRatio

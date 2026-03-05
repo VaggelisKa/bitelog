@@ -15,6 +15,8 @@ final class UserProfile {
     var dailyCalorieTarget: Int
     var manualOverride: Bool
 
+    var calorieDeficit: Double
+
     var proteinTargetG: Double
     var carbTargetG: Double
     var fatTargetG: Double
@@ -30,6 +32,7 @@ final class UserProfile {
         activityLevel: ActivityLevel,
         dailyCalorieTarget: Int? = nil,
         manualOverride: Bool = false,
+        calorieDeficit: Double = 500,
         proteinRatio: Double = 0.30,
         carbRatio: Double = 0.40,
         fatRatio: Double = 0.30
@@ -41,12 +44,13 @@ final class UserProfile {
         self.weightKg = weightKg
         self.activityLevel = activityLevel
         self.manualOverride = manualOverride
+        self.calorieDeficit = calorieDeficit
         self.createdAt = Date()
         self.updatedAt = Date()
 
         let computedBmr = NutritionCalculator.bmr(sex: sex, weightKg: weightKg, heightCm: heightCm, age: age)
         let computedTdee = NutritionCalculator.tdee(bmr: computedBmr, activity: activityLevel)
-        let target = dailyCalorieTarget ?? Int(max(1200, computedTdee - 500))
+        let target = dailyCalorieTarget ?? NutritionCalculator.defaultTarget(tdee: computedTdee, deficit: calorieDeficit)
 
         self.bmr = computedBmr
         self.tdee = computedTdee
@@ -60,7 +64,7 @@ final class UserProfile {
         bmr = NutritionCalculator.bmr(sex: sex, weightKg: weightKg, heightCm: heightCm, age: age)
         tdee = NutritionCalculator.tdee(bmr: bmr, activity: activityLevel)
         if !manualOverride {
-            dailyCalorieTarget = Int(tdee - 500)
+            dailyCalorieTarget = NutritionCalculator.defaultTarget(tdee: tdee, deficit: calorieDeficit)
         }
         proteinTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
         carbTargetG = NutritionCalculator.macroGrams(calories: Double(dailyCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)

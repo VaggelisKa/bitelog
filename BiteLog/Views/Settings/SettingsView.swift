@@ -58,12 +58,31 @@ struct SettingsView: View {
                     .foregroundStyle(BiteLogTheme.sage)
             }
 
+            if !profile.manualOverride {
+                HStack {
+                    Text("Adjustment")
+                    Spacer()
+                    Text(adjustmentLabel(for: profile.calorieDeficit))
+                        .font(BiteLogTheme.numericBody)
+                        .foregroundStyle(BiteLogTheme.textSecondary)
+                }
+            }
+
             NavigationLink("Edit Goal") {
                 GoalEditView(profile: profile)
             }
         } header: {
             Text("Goal")
         }
+    }
+
+    private func adjustmentLabel(for deficit: Double) -> String {
+        if deficit > 0 {
+            return "-\(Int(deficit)) kcal"
+        } else if deficit < 0 {
+            return "+\(Int(abs(deficit))) kcal"
+        }
+        return "Maintenance"
     }
 
     private func profileSection(_ profile: UserProfile) -> some View {
@@ -152,9 +171,23 @@ struct GoalEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var targetText: String = ""
+    @State private var calorieDeficit: Double = 500
     @State private var proteinRatio: Double = 0.30
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
+
+    private var calculatedTarget: Int {
+        NutritionCalculator.defaultTarget(tdee: profile.tdee, deficit: calorieDeficit)
+    }
+
+    private var deficitLabel: String {
+        if calorieDeficit > 0 {
+            return "-\(Int(calorieDeficit)) kcal/day (lose weight)"
+        } else if calorieDeficit < 0 {
+            return "+\(Int(abs(calorieDeficit))) kcal/day (gain weight)"
+        }
+        return "Maintenance (no change)"
+    }
 
     var body: some View {
         Form {
@@ -176,7 +209,33 @@ struct GoalEditView: View {
                     }
                 } else {
                     LabeledContent("Calculated TDEE", value: "\(Int(profile.tdee)) kcal")
-                    LabeledContent("Target (-500)", value: "\(NutritionCalculator.defaultTarget(tdee: profile.tdee)) kcal")
+                    LabeledContent("Target", value: "\(calculatedTarget) kcal")
+                }
+            }
+
+            if !profile.manualOverride {
+                Section {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Surplus")
+                                .font(.caption2)
+                                .foregroundStyle(BiteLogTheme.textSecondary)
+                            Slider(value: $calorieDeficit, in: -500...1000, step: 50)
+                                .tint(BiteLogTheme.sage)
+                            Text("Deficit")
+                                .font(.caption2)
+                                .foregroundStyle(BiteLogTheme.textSecondary)
+                        }
+
+                        Text(deficitLabel)
+                            .font(BiteLogTheme.caption)
+                            .foregroundStyle(BiteLogTheme.terracotta)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
+                } header: {
+                    Text("Calorie Adjustment")
+                } footer: {
+                    Text("Positive values create a deficit for weight loss, negative values create a surplus for weight gain.")
                 }
             }
 
@@ -207,6 +266,7 @@ struct GoalEditView: View {
 
             Section {
                 Button("Save Changes") {
+                    profile.calorieDeficit = calorieDeficit
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     dismiss()
                 }
@@ -219,6 +279,7 @@ struct GoalEditView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             targetText = "\(profile.dailyCalorieTarget)"
+            calorieDeficit = profile.calorieDeficit
         }
     }
 }
