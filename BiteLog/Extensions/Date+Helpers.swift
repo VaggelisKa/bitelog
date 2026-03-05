@@ -40,4 +40,24 @@ extension Date {
             Calendar.current.date(byAdding: .day, value: -offset, to: start.startOfDay)
         }
     }
+
+    var startOfWeek: Date {
+        var cal = Calendar.current
+        cal.firstWeekday = 2 // Monday
+        let components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
+        return cal.date(from: components)!.startOfDay
+    }
+
+    static func datesForCurrentWeek() -> [Date] {
+        let monday = Date.now.startOfWeek
+        return (0..<7).compactMap { offset in
+            Calendar.current.date(byAdding: .day, value: offset, to: monday)
+        }
+    }
+
+    var shortWeekday: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter.string(from: self)
+    }
 }

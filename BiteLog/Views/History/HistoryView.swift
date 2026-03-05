@@ -17,11 +17,19 @@ struct HistoryView: View {
         profile?.dailyCalorieTarget ?? 2000
     }
 
-    private var weeklyAverage: Double {
-        let last7 = Date.datesInRange(from: .now, days: 7)
-        let totals = last7.map { date in
-            entriesForDate(date).reduce(0.0) { $0 + $1.calories }
+    private var currentWeekDays: [Date] {
+        Date.datesForCurrentWeek()
+    }
+
+    private var currentWeekDailyTotals: [(date: Date, calories: Double)] {
+        currentWeekDays.map { date in
+            let total = entriesForDate(date).reduce(0.0) { $0 + $1.calories }
+            return (date: date, calories: total)
         }
+    }
+
+    private var weeklyAverage: Double {
+        let totals = currentWeekDailyTotals.map(\.calories)
         let daysWithFood = totals.filter { $0 > 0 }
         guard !daysWithFood.isEmpty else { return 0 }
         return daysWithFood.reduce(0, +) / Double(daysWithFood.count)
@@ -31,12 +39,13 @@ struct HistoryView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: BiteLogTheme.cardSpacing) {
-                    rangePicker
-
                     WeeklyAverageCard(
                         average: weeklyAverage,
-                        target: dailyTarget
+                        target: dailyTarget,
+                        dailyData: currentWeekDailyTotals
                     )
+
+                    rangePicker
 
                     LazyVStack(spacing: 10) {
                         ForEach(dates, id: \.self) { date in
@@ -113,7 +122,7 @@ enum HistoryRange: String, CaseIterable, Identifiable {
 
     let calendar = Calendar.current
     // Vary daily totals: ~1800–2300 so weekly average and day rows show meaningful data
-    let dailyCalorieTargets: [Double] = [2150, 1880, 2200, 1650, 1950, 2320, 1780, 2050, 1900, 2180]
+    let dailyCalorieTargets: [Double] = [2150, 1880, 1200, 1650, 1950, 2320, 1780, 2050, 1900, 1180]
     let mealPortions: [(FoodItem, MealType, Double)] = [
         (oatmeal, .breakfast, 80),
         (apple, .breakfast, 120),
