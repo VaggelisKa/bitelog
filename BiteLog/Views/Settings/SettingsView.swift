@@ -5,6 +5,7 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
+    @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
 
     @State private var showExportSheet = false
     @State private var exportURL: URL?
@@ -14,6 +15,8 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                appearanceSection
+
                 if let profile {
                     goalSection(profile)
                     profileSection(profile)
@@ -28,6 +31,20 @@ struct SettingsView: View {
                     ShareSheet(url: url)
                 }
             }
+        }
+    }
+
+    private var appearanceSection: some View {
+        Section {
+            Picker("Appearance", selection: $themePreferenceRaw) {
+                ForEach(ThemePreference.allCases, id: \.self) { preference in
+                    Label(preference.displayName, systemImage: preference.icon)
+                        .tag(preference.rawValue)
+                }
+            }
+            .tint(BiteLogTheme.sage)
+        } header: {
+            Text("Appearance")
         }
     }
 
@@ -105,6 +122,17 @@ struct SettingsView: View {
             Text("About")
         }
     }
+}
+
+#Preview {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: UserProfile.self, FoodItem.self, FoodLogEntry.self, configurations: config)
+    let context = ModelContext(container)
+    let profile = UserProfile(age: 30, sex: .male, heightCm: 175, weightKg: 70, activityLevel: .moderatelyActive, dailyCalorieTarget: 2000)
+    context.insert(profile)
+    try? context.save()
+    return SettingsView()
+        .modelContainer(container)
 }
 
 private struct ShareSheet: UIViewControllerRepresentable {
