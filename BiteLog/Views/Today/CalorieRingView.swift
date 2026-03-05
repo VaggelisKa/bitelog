@@ -21,6 +21,10 @@ struct CalorieRingView: View {
         max(0, target - Int(consumed))
     }
 
+    private var overAmount: Int {
+        max(0, Int(consumed) - target)
+    }
+
     private var isOver: Bool {
         consumed > Double(target)
     }
@@ -43,7 +47,7 @@ struct CalorieRingView: View {
                 .opacity(animatedRingProgress < 0.01 ? 0 : 1)
 
             VStack(spacing: 2) {
-                Text("\(remaining)")
+                Text("\(isOver ? overAmount : remaining)")
                     .font(.system(size: numberSize, weight: .bold, design: .rounded))
                     .foregroundStyle(isOver ? BiteLogTheme.terracotta : BiteLogTheme.textPrimary)
                     .contentTransition(.numericText())
