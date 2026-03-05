@@ -17,11 +17,19 @@ struct HistoryView: View {
         profile?.dailyCalorieTarget ?? 2000
     }
 
-    private var weeklyAverage: Double {
-        let last7 = Date.datesInRange(from: .now, days: 7)
-        let totals = last7.map { date in
-            entriesForDate(date).reduce(0.0) { $0 + $1.calories }
+    private var currentWeekDays: [Date] {
+        Date.datesForCurrentWeek()
+    }
+
+    private var currentWeekDailyTotals: [(date: Date, calories: Double)] {
+        currentWeekDays.map { date in
+            let total = entriesForDate(date).reduce(0.0) { $0 + $1.calories }
+            return (date: date, calories: total)
         }
+    }
+
+    private var weeklyAverage: Double {
+        let totals = currentWeekDailyTotals.map(\.calories)
         let daysWithFood = totals.filter { $0 > 0 }
         guard !daysWithFood.isEmpty else { return 0 }
         return daysWithFood.reduce(0, +) / Double(daysWithFood.count)
@@ -35,7 +43,8 @@ struct HistoryView: View {
 
                     WeeklyAverageCard(
                         average: weeklyAverage,
-                        target: dailyTarget
+                        target: dailyTarget,
+                        dailyData: currentWeekDailyTotals
                     )
 
                     LazyVStack(spacing: 10) {
