@@ -263,20 +263,19 @@ struct GoalEditView: View {
                         .foregroundStyle(BiteLogTheme.terracotta)
                 }
             }
-
-            Section {
-                Button("Save Changes") {
+        }
+        .navigationTitle("Edit Goal")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
                     profile.calorieDeficit = calorieDeficit
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     dismiss()
                 }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .foregroundStyle(BiteLogTheme.sage)
-                .font(.headline)
+                .fontWeight(.semibold)
             }
         }
-        .navigationTitle("Edit Goal")
-        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             targetText = "\(profile.dailyCalorieTarget)"
             calorieDeficit = profile.calorieDeficit
@@ -321,18 +320,17 @@ struct ProfileEditView: View {
                     }
                 }
             }
-
-            Section {
-                Button("Save & Recalculate") {
-                    profile.recalculate()
-                    dismiss()
-                }
-                .frame(maxWidth: .infinity, alignment: .center)
-                .foregroundStyle(BiteLogTheme.sage)
-                .font(.headline)
-            }
         }
         .navigationTitle("Edit Profile")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") {
+                    profile.recalculate()
+                    dismiss()
+                }
+                .fontWeight(.semibold)
+            }
+        }
     }
 }
