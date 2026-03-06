@@ -11,6 +11,7 @@ enum OnboardingStep: Int, CaseIterable, Hashable {
 
 struct OnboardingContainerView: View {
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @State private var path: [OnboardingStep] = []
 
     @State private var age: Int = 30
@@ -72,6 +73,27 @@ struct OnboardingContainerView: View {
     }
 
     private func saveProfile() {
+        let computedBmr = NutritionCalculator.bmr(sex: sex, weightKg: weightKg, heightCm: heightCm, age: age)
+        let computedTdee = NutritionCalculator.tdee(bmr: computedBmr, activity: activityLevel)
+
+        if let profile = profiles.first {
+            profile.age = age
+            profile.sex = sex
+            profile.heightCm = heightCm
+            profile.weightKg = weightKg
+            profile.activityLevel = activityLevel
+            profile.manualOverride = false
+            profile.calorieDeficit = calorieDeficit
+            profile.bmr = computedBmr
+            profile.tdee = computedTdee
+            profile.dailyCalorieTarget = finalCalorieTarget
+            profile.proteinTargetG = NutritionCalculator.macroGrams(calories: Double(finalCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
+            profile.carbTargetG = NutritionCalculator.macroGrams(calories: Double(finalCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)
+            profile.fatTargetG = NutritionCalculator.macroGrams(calories: Double(finalCalorieTarget), ratio: fatRatio, caloriesPerGram: 9)
+            profile.updatedAt = Date()
+            return
+        }
+
         let profile = UserProfile(
             age: age,
             sex: sex,
