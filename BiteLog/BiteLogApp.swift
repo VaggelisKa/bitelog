@@ -6,7 +6,7 @@ struct BiteLogApp: App {
     let sharedModelContainer: ModelContainer
 
     init() {
-        let iCloudEnabled = UserDefaults.standard.bool(forKey: "iCloudSyncEnabled")
+        let iCloudEnabled = UserDefaults.standard.object(forKey: "iCloudSyncEnabled") as? Bool ?? true
         let schema = Schema([
             UserProfile.self,
             FoodItem.self,

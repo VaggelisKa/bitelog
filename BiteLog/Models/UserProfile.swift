@@ -5,10 +5,10 @@ import SwiftData
 final class UserProfile {
     var id: UUID = UUID()
     var age: Int = 0
-    var sex: Sex = .male
+    var sex: Sex = Sex.male
     var heightCm: Double = 0
     var weightKg: Double = 0
-    var activityLevel: ActivityLevel = .sedentary
+    var activityLevel: ActivityLevel = ActivityLevel.sedentary
 
     var bmr: Double = 0
     var tdee: Double = 0

@@ -5,7 +5,7 @@ import SwiftData
 final class FoodLogEntry {
     var id: UUID = UUID()
     var date: Date = Date()
-    var mealType: MealType = .breakfast
+    var mealType: MealType = MealType.breakfast
     var snackIndex: Int = 0
 
     var foodItem: FoodItem?

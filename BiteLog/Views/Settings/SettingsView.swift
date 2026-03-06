@@ -6,7 +6,7 @@ struct SettingsView: View {
     @Query private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
-    @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = false
+    @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
 
     @State private var showExportSheet = false
     @State private var exportURL: URL?
