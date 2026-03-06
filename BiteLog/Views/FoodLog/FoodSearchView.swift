@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct FoodSearchView: View {
     let mealType: MealType
@@ -373,11 +374,19 @@ struct FoodSearchView: View {
             } catch is BarcodeLookupError {
                 isLookingUpBarcode = false
                 barcodeLookupError = "No results found\nfor this barcode."
+                triggerBarcodeLookupHaptic(.warning)
             } catch {
                 isLookingUpBarcode = false
                 barcodeLookupError = "Lookup failed.\nCheck your connection."
+                triggerBarcodeLookupHaptic(.error)
             }
         }
+    }
+
+    private func triggerBarcodeLookupHaptic(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(type)
     }
 
     private func dismissIfNeeded() {
