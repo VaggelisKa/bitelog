@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct FoodSearchView: View {
     let mealType: MealType
@@ -39,7 +40,7 @@ struct FoodSearchView: View {
             VStack(spacing: 0) {
                 searchBar
 
-                if isLookingUpBarcode {
+                if isLookingUpBarcode || barcodeLookupError != nil {
                     barcodeLookupOverlay
                 } else if showingRecent {
                     recentFoodsList
@@ -335,12 +336,20 @@ struct FoodSearchView: View {
                     .font(BiteLogTheme.bodyText)
                     .foregroundStyle(BiteLogTheme.textSecondary)
                     .multilineTextAlignment(.center)
-                Button("Try Again") {
-                    barcodeLookupError = nil
-                    showingScanner = true
+                HStack(spacing: 12) {
+                    Button("Dismiss") {
+                        barcodeLookupError = nil
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(BiteLogTheme.textSecondary)
+
+                    Button("Try Again") {
+                        barcodeLookupError = nil
+                        showingScanner = true
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(BiteLogTheme.sage)
                 }
-                .buttonStyle(.bordered)
-                .tint(BiteLogTheme.sage)
             } else {
                 ProgressView()
                     .controlSize(.large)
@@ -364,12 +373,20 @@ struct FoodSearchView: View {
                 selectedProduct = product
             } catch is BarcodeLookupError {
                 isLookingUpBarcode = false
-                barcodeLookupError = "No nutritional data found\nfor this barcode."
+                barcodeLookupError = "No results found\nfor this barcode."
+                triggerBarcodeLookupHaptic(.warning)
             } catch {
                 isLookingUpBarcode = false
                 barcodeLookupError = "Lookup failed.\nCheck your connection."
+                triggerBarcodeLookupHaptic(.error)
             }
         }
+    }
+
+    private func triggerBarcodeLookupHaptic(_ type: UINotificationFeedbackGenerator.FeedbackType) {
+        let generator = UINotificationFeedbackGenerator()
+        generator.prepare()
+        generator.notificationOccurred(type)
     }
 
     private func dismissIfNeeded() {
