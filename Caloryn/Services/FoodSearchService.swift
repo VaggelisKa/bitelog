@@ -73,13 +73,29 @@ final class FoodSearchService {
         return product
     }
 
-    private static let searchFields = "code,product_name,brands,serving_size,serving_quantity,nutriments"
+    private static let searchFields = [
+        "code",
+        "product_name",
+        "brands",
+        "serving_size",
+        "serving_quantity",
+        "nutriments",
+        "lang",
+        "countries_tags"
+    ].joined(separator: ",")
+    private static let searchPageSize = 48
 
     private func performSearch(query: String) async throws -> [OpenFoodFactsProduct] {
-        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? query
-        let urlString = "\(Self.searchBaseURL)/search?q=\(encoded)&fields=\(Self.searchFields)&page_size=24&langs=en,da"
+        let localeContext = SearchLocaleContext.current
+        var components = URLComponents(string: "\(Self.searchBaseURL)/search")
+        components?.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "fields", value: Self.searchFields),
+            URLQueryItem(name: "page_size", value: String(Self.searchPageSize)),
+            URLQueryItem(name: "langs", value: localeContext.preferredLanguageCodes.joined(separator: ","))
+        ]
 
-        guard let url = URL(string: urlString) else {
+        guard let url = components?.url else {
             throw URLError(.badURL)
         }
 
@@ -89,9 +105,164 @@ final class FoodSearchService {
         let (data, _) = try await URLSession.shared.data(for: request)
         let response = try JSONDecoder().decode(SearchResponse.self, from: data)
 
-        return response.hits.compactMap { hit in
+        let candidates = response.hits.compactMap { hit in
             guard hit.productName != nil, hit.nutriments?.energyKcal100g != nil else { return nil }
             return hit
+        }
+
+        return rankResults(candidates, for: query, localeContext: localeContext)
+    }
+
+    // The API relevance can surface foreign-language matches early, so we
+    // re-rank candidates toward the user's query, language, and region.
+    private func rankResults(
+        _ products: [OpenFoodFactsProduct],
+        for query: String,
+        localeContext: SearchLocaleContext
+    ) -> [OpenFoodFactsProduct] {
+        let normalizedQuery = normalizeSearchText(query)
+        let queryTokens = normalizedQuery.split(separator: " ").map(String.init)
+
+        return products.enumerated()
+            .sorted { lhs, rhs in
+                let leftScore = score(
+                    lhs.element,
+                    normalizedQuery: normalizedQuery,
+                    queryTokens: queryTokens,
+                    localeContext: localeContext,
+                    originalIndex: lhs.offset
+                )
+                let rightScore = score(
+                    rhs.element,
+                    normalizedQuery: normalizedQuery,
+                    queryTokens: queryTokens,
+                    localeContext: localeContext,
+                    originalIndex: rhs.offset
+                )
+
+                if leftScore == rightScore {
+                    return lhs.offset < rhs.offset
+                }
+
+                return leftScore > rightScore
+            }
+            .map(\.element)
+    }
+
+    private func score(
+        _ product: OpenFoodFactsProduct,
+        normalizedQuery: String,
+        queryTokens: [String],
+        localeContext: SearchLocaleContext,
+        originalIndex: Int
+    ) -> Int {
+        let normalizedName = normalizeSearchText(product.productName ?? "")
+        let normalizedBrand = normalizeSearchText(product.brands ?? "")
+        let productLanguage = product.lang?.lowercased()
+
+        var score = 0
+
+        if !normalizedQuery.isEmpty {
+            if normalizedName == normalizedQuery {
+                score += 1_200
+            } else if normalizedName.hasPrefix(normalizedQuery) {
+                score += 900
+            } else if normalizedName.contains(normalizedQuery) {
+                score += 700
+            }
+
+            if normalizedBrand.contains(normalizedQuery) {
+                score += 180
+            }
+
+            for token in queryTokens where !token.isEmpty {
+                if normalizedName.contains(token) {
+                    score += 120
+                }
+                if normalizedBrand.contains(token) {
+                    score += 40
+                }
+            }
+        }
+
+        if let productLanguage {
+            if localeContext.preferredLanguageCodes.first == productLanguage {
+                score += 325
+            } else if localeContext.preferredLanguageCodes.contains(productLanguage) {
+                score += 240
+            }
+        }
+
+        if let preferredCountryTag = localeContext.preferredCountryTag,
+           product.countriesTags?.contains(preferredCountryTag) == true {
+            score += 280
+        }
+
+        score += max(0, 40 - originalIndex)
+
+        return score
+    }
+
+    private func normalizeSearchText(_ text: String) -> String {
+        let folded = text.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+        let cleaned = folded.replacingOccurrences(
+            of: #"[^\p{L}\p{N}]+"#,
+            with: " ",
+            options: .regularExpression
+        )
+
+        return cleaned.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private struct SearchLocaleContext {
+        let preferredLanguageCodes: [String]
+        let preferredCountryTag: String?
+
+        static var current: SearchLocaleContext {
+            let preferredLanguageCodes = orderedUnique(
+                Locale.preferredLanguages.compactMap(Self.languageCode(from:)) + ["en"]
+            )
+            let preferredCountryTag = Locale.autoupdatingCurrent.regionCode.flatMap(Self.countryTag(from:))
+
+            return SearchLocaleContext(
+                preferredLanguageCodes: preferredLanguageCodes,
+                preferredCountryTag: preferredCountryTag
+            )
+        }
+
+        private static func orderedUnique(_ values: [String]) -> [String] {
+            var seen = Set<String>()
+
+            return values.compactMap { value in
+                let normalized = value.lowercased()
+                guard seen.insert(normalized).inserted else { return nil }
+                return normalized
+            }
+        }
+
+        private static func languageCode(from identifier: String) -> String? {
+            identifier
+                .split(whereSeparator: { $0 == "-" || $0 == "_" })
+                .first?
+                .lowercased()
+        }
+
+        private static func countryTag(from regionCode: String) -> String? {
+            let englishLocale = Locale(identifier: "en_US_POSIX")
+
+            guard let localizedRegionName = englishLocale.localizedString(forRegionCode: regionCode) else {
+                return nil
+            }
+
+            let slug = localizedRegionName
+                .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: englishLocale)
+                .replacingOccurrences(of: "&", with: " and ")
+                .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "-", options: .regularExpression)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+
+            guard !slug.isEmpty else { return nil }
+
+            return "en:\(slug)"
         }
     }
 
@@ -128,6 +299,8 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
     let servingSize: String?
     let servingQuantityG: Double?
     let nutriments: OFFNutriments?
+    let lang: String?
+    let countriesTags: [String]?
 
     var id: String { code ?? UUID().uuidString }
 
@@ -138,6 +311,8 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         case servingSize = "serving_size"
         case servingQuantityG = "serving_quantity"
         case nutriments
+        case lang
+        case countriesTags = "countries_tags"
     }
 
     init(from decoder: Decoder) throws {
@@ -147,6 +322,8 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         servingSize = try container.decodeIfPresent(String.self, forKey: .servingSize)
         servingQuantityG = try container.decodeIfPresent(Double.self, forKey: .servingQuantityG)
         nutriments = try container.decodeIfPresent(OFFNutriments.self, forKey: .nutriments)
+        lang = try container.decodeIfPresent(String.self, forKey: .lang)
+        countriesTags = try container.decodeIfPresent([String].self, forKey: .countriesTags)
 
         // search-a-licious returns brands as [String], the main API returns String
         if let brandsString = try? container.decodeIfPresent(String.self, forKey: .brands) {
