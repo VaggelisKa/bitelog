@@ -3,12 +3,14 @@ import SwiftData
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var profiles: [UserProfile]
+    @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
+    @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
 
     @State private var showExportSheet = false
     @State private var exportURL: URL?
+    @State private var showRestartAlert = false
 
     private var profile: UserProfile? { profiles.first }
 
@@ -30,6 +32,11 @@ struct SettingsView: View {
                 if let url = exportURL {
                     ShareSheet(url: url)
                 }
+            }
+            .alert("Restart Required", isPresented: $showRestartAlert) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("iCloud sync changes will take effect the next time you open the app.")
             }
         }
     }
@@ -103,6 +110,14 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section {
+            Toggle(isOn: $iCloudSyncEnabled) {
+                Label("iCloud Sync", systemImage: "icloud")
+            }
+            .tint(BiteLogTheme.sage)
+            .onChange(of: iCloudSyncEnabled) {
+                showRestartAlert = true
+            }
+
             Button {
                 exportURL = CSVExporter.exportURL(from: allEntries)
                 if exportURL != nil {
@@ -114,6 +129,10 @@ struct SettingsView: View {
             .disabled(allEntries.isEmpty)
         } header: {
             Text("Data")
+        } footer: {
+            if iCloudSyncEnabled {
+                Text("Your food log syncs automatically across your devices via iCloud.")
+            }
         }
     }
 

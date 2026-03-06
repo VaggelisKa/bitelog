@@ -3,7 +3,7 @@ import SwiftData
 
 struct HistoryView: View {
     @Query private var allEntries: [FoodLogEntry]
-    @Query private var profiles: [UserProfile]
+    @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
 
     @State private var selectedRange: HistoryRange = .week
 
