@@ -25,6 +25,10 @@ struct MealSectionView: View {
         entries.reduce(0) { $0 + $1.calories }
     }
 
+    private var totalProtein: Double {
+        entries.reduce(0) { $0 + $1.proteinG }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -38,9 +42,17 @@ struct MealSectionView: View {
 
                 Spacer()
 
-                Text(totalCalories.kcalFormatted)
-                    .font(CalorynTheme.numericCaption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(totalCalories.kcalFormatted)
+                        .font(CalorynTheme.numericCaption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+
+                    if !entries.isEmpty {
+                        Text("\(totalProtein.macroFormatted) protein")
+                            .font(CalorynTheme.numericCaption)
+                            .foregroundStyle(CalorynTheme.proteinColor)
+                    }
+                }
 
                 Button(action: onAdd) {
                     Image(systemName: "plus.circle.fill")
@@ -103,7 +115,7 @@ private struct MealEntryRow: View {
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
 
-                Text("\(Int(entry.portionGrams))g")
+                Text("\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
