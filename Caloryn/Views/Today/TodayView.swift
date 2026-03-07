@@ -168,9 +168,9 @@ struct TodayView: View {
             } label: {
                 Image(systemName: "chevron.right")
                     .font(.title3)
-                    .foregroundStyle(selectedDate.isToday ? CalorynTheme.textSecondary.opacity(0.3) : CalorynTheme.sage)
+                    .foregroundStyle(selectedDate.isAtFutureLogLimit ? CalorynTheme.textSecondary.opacity(0.3) : CalorynTheme.sage)
             }
-            .disabled(selectedDate.isToday)
+            .disabled(selectedDate.isAtFutureLogLimit)
             .accessibilityLabel("Next day")
         }
         .padding(.vertical, 8)
