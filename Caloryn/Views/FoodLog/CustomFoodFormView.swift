@@ -4,6 +4,7 @@ import SwiftData
 struct CustomFoodFormView: View {
     var existingFood: FoodItem?
     var onSaved: ((FoodItem) -> Void)?
+    var allowsDeletion: Bool
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -51,9 +52,10 @@ struct CustomFoodFormView: View {
         Double(fatPerServing) ?? 0
     }
 
-    init(existingFood: FoodItem? = nil, onSaved: ((FoodItem) -> Void)? = nil) {
+    init(existingFood: FoodItem? = nil, onSaved: ((FoodItem) -> Void)? = nil, allowsDeletion: Bool = true) {
         self.existingFood = existingFood
         self.onSaved = onSaved
+        self.allowsDeletion = allowsDeletion
     }
 
     var body: some View {
@@ -68,7 +70,7 @@ struct CustomFoodFormView: View {
 
                     servingSizeSection
 
-                    if isEditing {
+                    if isEditing && allowsDeletion {
                         deleteSection
                     }
                 }

@@ -15,6 +15,7 @@ struct PortionPickerView: View {
     @State private var portionGrams: Double = 100
     @State private var portionText: String = "100"
     @State private var selectedMeal: MealType
+    @State private var showingCustomFoodEditor = false
 
     @ScaledMetric private var quickButtonPadding: CGFloat = 10
 
@@ -72,6 +73,27 @@ struct PortionPickerView: View {
                     }
                     .accessibilityLabel("Close")
                 }
+                if foodItem.isCustom {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button {
+                            showingCustomFoodEditor = true
+                        } label: {
+                            Image(systemName: "pencil")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(CalorynTheme.sage)
+                        }
+                        .accessibilityLabel("Edit Custom Food")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingCustomFoodEditor) {
+                CustomFoodFormView(
+                    existingFood: foodItem,
+                    onSaved: { _ in
+                        updatePortionFromDefaultServing()
+                    },
+                    allowsDeletion: false
+                )
             }
             .safeAreaInset(edge: .bottom) {
                 Button(action: logFood) {
@@ -264,6 +286,12 @@ struct PortionPickerView: View {
         modelContext.insert(entry)
         onLogged?()
         dismiss()
+    }
+
+    private func updatePortionFromDefaultServing() {
+        let defaultPortion = foodItem.defaultServingG ?? 100
+        portionGrams = defaultPortion
+        portionText = "\(Int(defaultPortion))"
     }
 }
 
