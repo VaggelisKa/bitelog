@@ -19,6 +19,7 @@ struct FoodSearchView: View {
     @State private var showingScanner = false
     @State private var showingCustomFoodForm = false
     @State private var editingCustomFood: FoodItem?
+    @State private var isEditingCustomFoods = false
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError: String?
     @FocusState private var isSearchFocused: Bool
@@ -60,7 +61,20 @@ struct FoodSearchView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if !customFoods.isEmpty {
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                isEditingCustomFoods.toggle()
+                            }
+                        } label: {
+                            Image(systemName: isEditingCustomFoods ? "checkmark" : "pencil")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(CalorynTheme.sage)
+                        }
+                        .accessibilityLabel(isEditingCustomFoods ? "Done editing custom foods" : "Edit custom foods")
+                    }
+
                     Button {
                         showingCustomFoodForm = true
                     } label: {
@@ -101,6 +115,11 @@ struct FoodSearchView: View {
             }
             .onAppear {
                 isSearchFocused = true
+            }
+            .onChange(of: customFoods.isEmpty) {
+                if customFoods.isEmpty {
+                    isEditingCustomFoods = false
+                }
             }
         }
     }
@@ -162,29 +181,7 @@ struct FoodSearchView: View {
                     if !customFoods.isEmpty {
                         Section {
                             ForEach(customFoods) { food in
-                                FoodRowView(
-                                    name: food.name,
-                                    brand: food.brand,
-                                    caloriesPer100g: food.caloriesPer100g,
-                                    isCustom: true
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedFoodItem = food
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        modelContext.delete(food)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                    Button {
-                                        editingCustomFood = food
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                    .tint(CalorynTheme.sage)
-                                }
+                                customFoodRow(for: food)
                             }
                         } header: {
                             Text("My Foods")
@@ -249,16 +246,7 @@ struct FoodSearchView: View {
                     if !matchingCustomFoods.isEmpty {
                         Section {
                             ForEach(matchingCustomFoods) { food in
-                                FoodRowView(
-                                    name: food.name,
-                                    brand: food.brand,
-                                    caloriesPer100g: food.caloriesPer100g,
-                                    isCustom: true
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedFoodItem = food
-                                }
+                                customFoodRow(for: food)
                             }
                         } header: {
                             Text("My Foods")
@@ -299,6 +287,61 @@ struct FoodSearchView: View {
                     }
                 }
                 .listStyle(.plain)
+            }
+        }
+    }
+
+    private func customFoodRow(for food: FoodItem) -> some View {
+        HStack(spacing: 12) {
+            FoodRowView(
+                name: food.name,
+                brand: food.brand,
+                caloriesPer100g: food.caloriesPer100g,
+                isCustom: true
+            )
+
+            if isEditingCustomFoods {
+                HStack(spacing: 10) {
+                    Button {
+                        editingCustomFood = food
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .accessibilityLabel("Edit \(food.name)")
+                    .foregroundStyle(CalorynTheme.sage)
+
+                    Button(role: .destructive) {
+                        modelContext.delete(food)
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .accessibilityLabel("Delete \(food.name)")
+                }
+                .font(.system(size: 15, weight: .semibold))
+                .buttonStyle(.plain)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if isEditingCustomFoods {
+                editingCustomFood = food
+            } else {
+                selectedFoodItem = food
+            }
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if !isEditingCustomFoods {
+                Button(role: .destructive) {
+                    modelContext.delete(food)
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+                Button {
+                    editingCustomFood = food
+                } label: {
+                    Label("Edit", systemImage: "pencil")
+                }
+                .tint(CalorynTheme.sage)
             }
         }
     }
