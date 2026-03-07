@@ -2,7 +2,7 @@ import Foundation
 
 enum CSVExporter {
     static func generateCSV(from entries: [FoodLogEntry]) -> String {
-        var csv = "Date,Meal,Food,Portion (g),Calories,Protein (g),Carbs (g),Fat (g)\n"
+        var csv = "Date,Meal,Food,Portion,Portion (g),Calories,Protein (g),Carbs (g),Fat (g)\n"
 
         let sorted = entries.sorted { $0.date < $1.date }
 
@@ -21,7 +21,11 @@ enum CSVExporter {
             let carbs = String(format: "%.1f", entry.carbsG)
             let fat = String(format: "%.1f", entry.fatG)
 
-            csv += "\(date),\(meal),\(food),\(portion),\(cal),\(protein),\(carbs),\(fat)\n"
+            let label = entry.portionLabel.isEmpty
+                ? portion
+                : entry.portionLabel.replacingOccurrences(of: ",", with: ";")
+
+            csv += "\(date),\(meal),\(food),\(label),\(portion),\(cal),\(protein),\(carbs),\(fat)\n"
         }
 
         return csv

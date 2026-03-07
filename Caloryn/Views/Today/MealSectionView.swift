@@ -115,7 +115,7 @@ private struct MealEntryRow: View {
                     .foregroundStyle(CalorynTheme.textPrimary)
                     .lineLimit(1)
 
-                Text("\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
+                Text("\(portionDisplayText(for: entry)) · \(entry.proteinG.macroFormatted) protein")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
@@ -137,5 +137,12 @@ private struct MealEntryRow: View {
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func portionDisplayText(for entry: FoodLogEntry) -> String {
+        if !entry.portionLabel.isEmpty {
+            return entry.portionLabel
+        }
+        return "\(Int(entry.portionGrams))g"
     }
 }

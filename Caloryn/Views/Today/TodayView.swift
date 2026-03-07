@@ -223,6 +223,7 @@ struct TodayView: View {
                 mealType: entry.mealType,
                 foodItem: food,
                 portionGrams: entry.portionGrams,
+                portionLabel: entry.portionLabel,
                 snackIndex: entry.snackIndex
             )
             modelContext.insert(newEntry)
