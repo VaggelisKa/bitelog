@@ -11,6 +11,7 @@ final class FoodLogEntry {
     var foodItem: FoodItem?
 
     var portionGrams: Double = 0
+    var portionLabel: String = ""
     var calories: Double = 0
     var proteinG: Double = 0
     var carbsG: Double = 0
@@ -23,6 +24,7 @@ final class FoodLogEntry {
         mealType: MealType,
         foodItem: FoodItem,
         portionGrams: Double,
+        portionLabel: String = "",
         snackIndex: Int = 1
     ) {
         self.id = UUID()
@@ -31,6 +33,7 @@ final class FoodLogEntry {
         self.snackIndex = mealType == .snack ? snackIndex : 0
         self.foodItem = foodItem
         self.portionGrams = portionGrams
+        self.portionLabel = portionLabel
         self.calories = foodItem.calories(forGrams: portionGrams)
         self.proteinG = foodItem.protein(forGrams: portionGrams)
         self.carbsG = foodItem.carbs(forGrams: portionGrams)

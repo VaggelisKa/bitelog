@@ -16,12 +16,24 @@ final class FoodItem {
     var defaultServingG: Double?
     var servingDescription: String?
 
+    var portionOptionsData: Data?
+
     var isCustom: Bool = false
 
     var lastUsed: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \FoodLogEntry.foodItem)
     var logEntries: [FoodLogEntry]?
+
+    var portionOptions: [PortionOption] {
+        get {
+            guard let data = portionOptionsData else { return [] }
+            return (try? JSONDecoder().decode([PortionOption].self, from: data)) ?? []
+        }
+        set {
+            portionOptionsData = try? JSONEncoder().encode(newValue)
+        }
+    }
 
     init(
         name: String,
@@ -33,7 +45,8 @@ final class FoodItem {
         fatPer100g: Double,
         defaultServingG: Double? = nil,
         servingDescription: String? = nil,
-        isCustom: Bool = false
+        isCustom: Bool = false,
+        portionOptions: [PortionOption] = []
     ) {
         self.id = UUID()
         self.name = name
@@ -47,6 +60,7 @@ final class FoodItem {
         self.servingDescription = servingDescription
         self.isCustom = isCustom
         self.lastUsed = Date()
+        self.portionOptions = portionOptions
     }
 
     func calories(forGrams grams: Double) -> Double {
