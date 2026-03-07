@@ -17,6 +17,11 @@ extension Date {
         Calendar.current.isDateInToday(self)
     }
 
+    /// True when this date is at or beyond the max future log day (7 days from today).
+    var isAtFutureLogLimit: Bool {
+        daysFrom(.now) >= 7
+    }
+
     var shortFormatted: String {
         if isToday { return "Today" }
         if Calendar.current.isDateInYesterday(self) { return "Yesterday" }
