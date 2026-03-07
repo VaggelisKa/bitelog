@@ -162,29 +162,7 @@ struct FoodSearchView: View {
                     if !customFoods.isEmpty {
                         Section {
                             ForEach(customFoods) { food in
-                                FoodRowView(
-                                    name: food.name,
-                                    brand: food.brand,
-                                    caloriesPer100g: food.caloriesPer100g,
-                                    isCustom: true
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedFoodItem = food
-                                }
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        modelContext.delete(food)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                    Button {
-                                        editingCustomFood = food
-                                    } label: {
-                                        Label("Edit", systemImage: "pencil")
-                                    }
-                                    .tint(CalorynTheme.sage)
-                                }
+                                customFoodRow(for: food)
                             }
                         } header: {
                             Text("My Foods")
@@ -249,16 +227,7 @@ struct FoodSearchView: View {
                     if !matchingCustomFoods.isEmpty {
                         Section {
                             ForEach(matchingCustomFoods) { food in
-                                FoodRowView(
-                                    name: food.name,
-                                    brand: food.brand,
-                                    caloriesPer100g: food.caloriesPer100g,
-                                    isCustom: true
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    selectedFoodItem = food
-                                }
+                                customFoodRow(for: food)
                             }
                         } header: {
                             Text("My Foods")
@@ -300,6 +269,32 @@ struct FoodSearchView: View {
                 }
                 .listStyle(.plain)
             }
+        }
+    }
+
+    private func customFoodRow(for food: FoodItem) -> some View {
+        FoodRowView(
+            name: food.name,
+            brand: food.brand,
+            caloriesPer100g: food.caloriesPer100g,
+            isCustom: true
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            selectedFoodItem = food
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                modelContext.delete(food)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            Button {
+                editingCustomFood = food
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(CalorynTheme.sage)
         }
     }
 
