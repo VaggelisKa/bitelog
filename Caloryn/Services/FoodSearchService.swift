@@ -267,6 +267,10 @@ final class FoodSearchService {
 
     func createFoodItem(from product: OpenFoodFactsProduct) -> FoodItem {
         let nutriments = product.nutriments
+        let portions = Self.buildPortionOptions(
+            servingSize: product.servingSize,
+            servingQuantityG: product.servingQuantityG
+        )
         return FoodItem(
             name: product.productName ?? "Unknown",
             brand: product.brands,
@@ -276,8 +280,55 @@ final class FoodSearchService {
             carbsPer100g: nutriments?.carbohydrates100g ?? 0,
             fatPer100g: nutriments?.fat100g ?? 0,
             defaultServingG: product.servingQuantityG,
-            servingDescription: product.servingSize
+            servingDescription: product.servingSize,
+            portionOptions: portions
         )
+    }
+
+    static func buildPortionOptions(servingSize: String?, servingQuantityG: Double?) -> [PortionOption] {
+        guard let grams = servingQuantityG, grams > 0 else { return [] }
+
+        let name = parsePortionName(from: servingSize)
+        return [PortionOption(name: name, gramsPerPortion: grams)]
+    }
+
+    private static func parsePortionName(from servingSize: String?) -> String {
+        guard let raw = servingSize?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else {
+            return "serving"
+        }
+
+        let lowered = raw.lowercased()
+
+        let portionKeywords = [
+            "piece", "slice", "cup", "tbsp", "tablespoon",
+            "tsp", "teaspoon", "scoop", "bar", "can",
+            "bottle", "packet", "pouch", "container",
+            "bowl", "sandwich", "wrap", "roll", "biscuit",
+            "cookie", "cracker", "wafer", "stick", "unit",
+        ]
+
+        for keyword in portionKeywords {
+            if lowered.contains(keyword) {
+                return keyword
+            }
+        }
+
+        let quantityPattern = #"^\d+[\.,]?\d*\s*(?:g|ml|oz|fl)"#
+        if lowered.range(of: quantityPattern, options: .regularExpression) != nil {
+            return "serving"
+        }
+
+        let parentheticalPattern = #"^([^(]+)\s*\("#
+        if let match = raw.range(of: parentheticalPattern, options: .regularExpression) {
+            let extracted = String(raw[match]).trimmingCharacters(in: .whitespaces)
+                .trimmingCharacters(in: CharacterSet(charactersIn: "("))
+                .trimmingCharacters(in: .whitespaces)
+            if !extracted.isEmpty, Double(extracted) == nil {
+                return extracted.lowercased()
+            }
+        }
+
+        return "serving"
     }
 }
 
