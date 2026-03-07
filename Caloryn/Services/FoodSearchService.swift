@@ -105,9 +105,8 @@ final class FoodSearchService {
         let (data, _) = try await URLSession.shared.data(for: request)
         let response = try JSONDecoder().decode(SearchResponse.self, from: data)
 
-        let candidates = response.hits.compactMap { hit in
-            guard hit.productName != nil, hit.nutriments?.energyKcal100g != nil else { return nil }
-            return hit
+        let candidates = response.hits.filter { hit in
+            hit.productName != nil && hit.nutriments?.energyKcal100g != nil
         }
 
         return rankResults(candidates, for: query, localeContext: localeContext)
@@ -146,7 +145,7 @@ final class FoodSearchService {
 
                 return leftScore > rightScore
             }
-            .map(\.element)
+            .map { $0.element }
     }
 
     private func score(
