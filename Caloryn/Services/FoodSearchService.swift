@@ -267,9 +267,10 @@ final class FoodSearchService {
 
     func createFoodItem(from product: OpenFoodFactsProduct) -> FoodItem {
         let nutriments = product.nutriments
+        let servingGrams = product.servingQuantityG ?? Self.parseGramsFromServingSize(product.servingSize)
         let portions = Self.buildPortionOptions(
             servingSize: product.servingSize,
-            servingQuantityG: product.servingQuantityG
+            servingQuantityG: product.servingQuantityG ?? servingGrams
         )
         return FoodItem(
             name: product.productName ?? "Unknown",
@@ -279,17 +280,35 @@ final class FoodSearchService {
             proteinPer100g: nutriments?.proteins100g ?? 0,
             carbsPer100g: nutriments?.carbohydrates100g ?? 0,
             fatPer100g: nutriments?.fat100g ?? 0,
-            defaultServingG: product.servingQuantityG,
+            defaultServingG: servingGrams.flatMap { $0 > 0 ? $0 : nil },
             servingDescription: product.servingSize,
             portionOptions: portions
         )
     }
 
     static func buildPortionOptions(servingSize: String?, servingQuantityG: Double?) -> [PortionOption] {
-        guard let grams = servingQuantityG, grams > 0 else { return [] }
+        let grams = servingQuantityG ?? parseGramsFromServingSize(servingSize)
+        guard let grams, grams > 0 else { return [] }
 
         let name = parsePortionName(from: servingSize)
         return [PortionOption(name: name, gramsPerPortion: grams)]
+    }
+
+    /// Parses grams from OFF `serving_size` string when `serving_quantity` is missing.
+    /// Handles e.g. "28g", "28 g", "1 slice (28g)", "50ml", "2 biscuits (26g)".
+    private static func parseGramsFromServingSize(_ servingSize: String?) -> Double? {
+        guard let raw = servingSize?.trimmingCharacters(in: .whitespaces), !raw.isEmpty else {
+            return nil
+        }
+        // Match number (with optional decimal) followed by optional space and g or ml
+        let pattern = #"(\d+[\.,]?\d*)\s*(?:g|ml)\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
+              let match = regex.firstMatch(in: raw, range: NSRange(raw.startIndex..., in: raw)),
+              let range = Range(match.range(at: 1), in: raw) else {
+            return nil
+        }
+        let numberStr = raw[range].replacingOccurrences(of: ",", with: ".")
+        return Double(numberStr)
     }
 
     private static func parsePortionName(from servingSize: String?) -> String {

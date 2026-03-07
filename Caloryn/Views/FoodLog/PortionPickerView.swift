@@ -32,10 +32,6 @@ struct PortionPickerView: View {
             options.append(.portion(PortionOption(name: desc, gramsPerPortion: serving)))
         }
 
-        if options.isEmpty {
-            options.append(.portion(PortionOption(name: "serving", gramsPerPortion: 100)))
-        }
-
         options.append(.grams)
         return options
     }
