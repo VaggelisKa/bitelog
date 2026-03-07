@@ -16,12 +16,13 @@ struct CustomFoodFormView: View {
     @State private var carbsPerServing = ""
     @State private var fatPerServing = ""
     @State private var servingSizeGrams = "100"
+    @State private var servingName = ""
     @State private var showingDeleteConfirmation = false
 
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
-        case name, brand, calories, protein, carbs, fat, servingSize
+        case name, brand, calories, protein, carbs, fat, servingSize, servingName
     }
 
     private var isEditing: Bool { existingFood != nil }
@@ -241,7 +242,22 @@ struct CustomFoodFormView: View {
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
-            Text("The nutrition values above are for one serving of this size.")
+            HStack {
+                Text("Portion name")
+                    .font(CalorynTheme.bodyText)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Spacer()
+
+                TextField("e.g. slice, piece, cup", text: $servingName)
+                    .font(CalorynTheme.bodyText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 160)
+                    .textInputAutocapitalization(.never)
+                    .focused($focusedField, equals: .servingName)
+            }
+
+            Text("Give your serving a name to log by portion (e.g. 2 slices) instead of grams.")
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
@@ -281,6 +297,12 @@ struct CustomFoodFormView: View {
         if protein > 0 { proteinPerServing = String(format: "%.1f", protein) }
         if carbs > 0 { carbsPerServing = String(format: "%.1f", carbs) }
         if fat > 0 { fatPerServing = String(format: "%.1f", fat) }
+
+        if let firstPortion = food.portionOptions.first {
+            servingName = firstPortion.name
+        } else if let desc = food.servingDescription, desc != "1 serving" {
+            servingName = desc
+        }
     }
 
     private func saveFood() {
@@ -295,6 +317,10 @@ struct CustomFoodFormView: View {
         let carbPer100 = carb / serving * 100
         let fPer100 = f / serving * 100
 
+        let trimmedServingName = servingName.trimmingCharacters(in: .whitespaces)
+        let portionName = trimmedServingName.isEmpty ? "serving" : trimmedServingName
+        let portions = [PortionOption(name: portionName, gramsPerPortion: serving)]
+
         if let food = existingFood {
             food.name = name.trimmingCharacters(in: .whitespaces)
             food.brand = brand.isEmpty ? nil : brand.trimmingCharacters(in: .whitespaces)
@@ -303,7 +329,8 @@ struct CustomFoodFormView: View {
             food.carbsPer100g = carbPer100
             food.fatPer100g = fPer100
             food.defaultServingG = serving
-            food.servingDescription = "1 serving"
+            food.servingDescription = portionName
+            food.portionOptions = portions
             onSaved?(food)
         } else {
             let food = FoodItem(
@@ -314,8 +341,9 @@ struct CustomFoodFormView: View {
                 carbsPer100g: carbPer100,
                 fatPer100g: fPer100,
                 defaultServingG: serving,
-                servingDescription: "1 serving",
-                isCustom: true
+                servingDescription: portionName,
+                isCustom: true,
+                portionOptions: portions
             )
             modelContext.insert(food)
             onSaved?(food)
