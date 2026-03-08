@@ -102,6 +102,7 @@ struct TodayView: View {
 
                         if showNutriscore, hasNutriscoreData {
                             NutriscoreDaySummary(distribution: nutriscoreDistribution)
+                                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))
                         }
 
                         ForEach(coreMeals) { meal in
@@ -146,6 +147,7 @@ struct TodayView: View {
                     .padding(.horizontal, CalorynTheme.pagePadding)
                     .padding(.top, CalorynTheme.cardSpacing)
                     .padding(.bottom, 20)
+                    .animation(.smooth(duration: 0.35), value: hasNutriscoreData)
                 }
             }
             .sheet(isPresented: $showingFoodSearch) {

@@ -35,8 +35,10 @@ struct NutriscoreDaySummary: View {
                         Text("×\(item.count)")
                             .font(.system(.caption2, design: .rounded))
                             .foregroundStyle(CalorynTheme.textSecondary)
+                            .contentTransition(.numericText())
                     }
                 }
+                .animation(.smooth(duration: 0.35), value: orderedSegments.map { "\($0.grade)-\($0.count)" })
             }
         }
         .padding(CalorynTheme.cardPadding)
@@ -63,11 +65,12 @@ private struct NutriscoreAllocationBar: View {
                         let fraction = Double(item.count) / Double(total)
                         RoundedRectangle(cornerRadius: 3, style: .continuous)
                             .fill(color)
-                            .frame(width: geo.size.width * fraction)
-                            .animation(.smooth(duration: 0.4), value: fraction)
+                            .frame(width: max(0, geo.size.width * fraction))
+                            .transition(.opacity.combined(with: .scale(scale: 0.95, anchor: .leading)))
                     }
                 }
             }
+            .animation(.smooth(duration: 0.35), value: segments.map { "\($0.grade)-\($0.count)" })
         }
         .frame(height: 14)
         .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
