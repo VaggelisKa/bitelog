@@ -6,7 +6,11 @@ extension Double {
     }
 
     var macroFormatted: String {
-        String(format: "%.1fg", self)
+        let s = String(format: "%.1f", self)
+        if s.hasSuffix(".0") {
+            return "\(Int(self.rounded()))g"
+        }
+        return s + "g"
     }
 
     var wholeFormatted: String {

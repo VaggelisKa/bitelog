@@ -43,11 +43,13 @@ struct MealSectionView: View {
                 Spacer()
 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(totalCalories.kcalFormatted)
-                        .font(CalorynTheme.numericCaption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
+                    if !totalCalories.isZero {
+                        Text(totalCalories.kcalFormatted)
+                            .font(CalorynTheme.numericCaption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                    }
 
-                    if !entries.isEmpty {
+                    if !entries.isEmpty, !totalProtein.isZero {
                         Text("\(totalProtein.macroFormatted) protein")
                             .font(CalorynTheme.numericCaption)
                             .foregroundStyle(CalorynTheme.proteinColor)
@@ -123,9 +125,11 @@ private struct MealEntryRow: View {
                     }
                 }
 
-                Text("\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                if !entry.proteinG.isZero {
+                    Text("\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
             }
 
             Spacer()
