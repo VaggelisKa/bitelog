@@ -107,13 +107,21 @@ private struct MealEntryRow: View {
     let entry: FoodLogEntry
     var onDelete: () -> Void
 
+    @AppStorage("showNutriscore") private var showNutriscore = true
+
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.foodName)
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(entry.foodName)
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .lineLimit(1)
+
+                    if showNutriscore, let grade = entry.foodItem?.nutriscoreGrade {
+                        NutriscoreBadge(grade: grade)
+                    }
+                }
 
                 Text("\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
                     .font(CalorynTheme.caption)

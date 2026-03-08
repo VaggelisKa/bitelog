@@ -13,6 +13,8 @@ final class FoodItem {
     var carbsPer100g: Double = 0
     var fatPer100g: Double = 0
 
+    var nutriscoreGrade: String?
+
     var defaultServingG: Double?
     var servingDescription: String?
 
@@ -33,6 +35,7 @@ final class FoodItem {
         fatPer100g: Double,
         defaultServingG: Double? = nil,
         servingDescription: String? = nil,
+        nutriscoreGrade: String? = nil,
         isCustom: Bool = false
     ) {
         self.id = UUID()
@@ -45,6 +48,7 @@ final class FoodItem {
         self.fatPer100g = fatPer100g
         self.defaultServingG = defaultServingG
         self.servingDescription = servingDescription
+        self.nutriscoreGrade = nutriscoreGrade
         self.isCustom = isCustom
         self.lastUsed = Date()
     }

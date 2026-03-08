@@ -111,12 +111,20 @@ struct PortionPickerView: View {
         .presentationDetents([.large])
     }
 
+    @AppStorage("showNutriscore") private var showNutriscore = true
+
     private var foodHeader: some View {
         VStack(spacing: 4) {
-            Text(foodItem.name)
-                .font(CalorynTheme.sectionTitle)
-                .foregroundStyle(CalorynTheme.textPrimary)
-                .multilineTextAlignment(.center)
+            HStack(spacing: 8) {
+                Text(foodItem.name)
+                    .font(CalorynTheme.sectionTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .multilineTextAlignment(.center)
+
+                if showNutriscore, let grade = foodItem.nutriscoreGrade {
+                    NutriscoreBadge(grade: grade)
+                }
+            }
 
             if let brand = foodItem.brand, !brand.isEmpty {
                 Text(brand)

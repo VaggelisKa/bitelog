@@ -52,6 +52,24 @@ enum CalorynTheme {
 
     static let fatColor = terracotta
 
+    // Nutri-Score (A = best, E = worst)
+    static let nutriscoreA = Color(red: 0.012, green: 0.506, blue: 0.255)   // #038141
+    static let nutriscoreB = Color(red: 0.522, green: 0.733, blue: 0.184)   // #85BB2F
+    static let nutriscoreC = Color(red: 0.996, green: 0.796, blue: 0.008)   // #FECB02
+    static let nutriscoreD = Color(red: 0.933, green: 0.506, blue: 0)       // #EE8100
+    static let nutriscoreE = Color(red: 0.902, green: 0.243, blue: 0.067)   // #E63E11
+
+    static func nutriscoreColor(for grade: String) -> Color? {
+        switch grade.lowercased() {
+        case "a": return nutriscoreA
+        case "b": return nutriscoreB
+        case "c": return nutriscoreC
+        case "d": return nutriscoreD
+        case "e": return nutriscoreE
+        default: return nil
+        }
+    }
+
     // MARK: - Spacing
 
     static let pagePadding: CGFloat = 20

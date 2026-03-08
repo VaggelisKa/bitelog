@@ -80,6 +80,7 @@ final class FoodSearchService {
         "serving_size",
         "serving_quantity",
         "nutriments",
+        "nutrition_grades",
         "lang",
         "countries_tags"
     ].joined(separator: ",")
@@ -265,6 +266,11 @@ final class FoodSearchService {
         }
     }
 
+    private static func validNutriscoreGrade(_ raw: String?) -> String? {
+        guard let letter = raw?.lowercased(), ["a", "b", "c", "d", "e"].contains(letter) else { return nil }
+        return letter
+    }
+
     func createFoodItem(from product: OpenFoodFactsProduct) -> FoodItem {
         let nutriments = product.nutriments
         return FoodItem(
@@ -276,7 +282,8 @@ final class FoodSearchService {
             carbsPer100g: nutriments?.carbohydrates100g ?? 0,
             fatPer100g: nutriments?.fat100g ?? 0,
             defaultServingG: product.servingQuantityG,
-            servingDescription: product.servingSize
+            servingDescription: product.servingSize,
+            nutriscoreGrade: Self.validNutriscoreGrade(product.nutritionGrades)
         )
     }
 }
@@ -298,6 +305,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
     let servingSize: String?
     let servingQuantityG: Double?
     let nutriments: OFFNutriments?
+    let nutritionGrades: String?
     let lang: String?
     let countriesTags: [String]?
 
@@ -310,6 +318,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         case servingSize = "serving_size"
         case servingQuantityG = "serving_quantity"
         case nutriments
+        case nutritionGrades = "nutrition_grades"
         case lang
         case countriesTags = "countries_tags"
     }
@@ -321,6 +330,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         servingSize = try container.decodeIfPresent(String.self, forKey: .servingSize)
         servingQuantityG = try container.decodeIfPresent(Double.self, forKey: .servingQuantityG)
         nutriments = try container.decodeIfPresent(OFFNutriments.self, forKey: .nutriments)
+        nutritionGrades = try container.decodeIfPresent(String.self, forKey: .nutritionGrades)
         lang = try container.decodeIfPresent(String.self, forKey: .lang)
         countriesTags = try container.decodeIfPresent([String].self, forKey: .countriesTags)
 

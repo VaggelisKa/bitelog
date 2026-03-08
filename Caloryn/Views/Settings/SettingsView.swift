@@ -6,6 +6,7 @@ struct SettingsView: View {
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
+    @AppStorage("showNutriscore") private var showNutriscore = true
     @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
 
     @State private var showExportSheet = false
@@ -50,8 +51,15 @@ struct SettingsView: View {
                 }
             }
             .tint(CalorynTheme.sage)
+
+            Toggle(isOn: $showNutriscore) {
+                Label("Show Nutri-Score", systemImage: "leaf")
+            }
+            .tint(CalorynTheme.sage)
         } header: {
             Text("Appearance")
+        } footer: {
+            Text("Display nutrition quality scores from Open Food Facts on foods and in your daily summary.")
         }
     }
 

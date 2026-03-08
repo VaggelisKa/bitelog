@@ -11,6 +11,7 @@ struct TodayView: View {
     @State private var selectedMealType: MealType = .breakfast
     @State private var selectedSnackIndex: Int = 1
 
+    @AppStorage("showNutriscore") private var showNutriscore = true
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
@@ -33,6 +34,18 @@ struct TodayView: View {
 
     private var totalFat: Double {
         todayEntries.reduce(0) { $0 + $1.fatG }
+    }
+
+    private var nutriscoreDistribution: [(grade: String, count: Int)] {
+        let grades = todayEntries.compactMap { $0.foodItem?.nutriscoreGrade }
+        let valid = ["a", "b", "c", "d", "e"]
+        return valid.map { grade in
+            (grade, grades.filter { $0.lowercased() == grade }.count)
+        }.filter { $0.count > 0 }
+    }
+
+    private var hasNutriscoreData: Bool {
+        todayEntries.contains { $0.foodItem?.nutriscoreGrade != nil }
     }
 
     private var coreMeals: [MealType] {
@@ -85,6 +98,10 @@ struct TodayView: View {
                                 fatTarget: profile.fatTargetG
                             )
                             .padding(.horizontal, 4)
+                        }
+
+                        if showNutriscore, hasNutriscoreData {
+                            NutriscoreDaySummary(distribution: nutriscoreDistribution)
                         }
 
                         ForEach(coreMeals) { meal in

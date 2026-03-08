@@ -177,7 +177,8 @@ struct FoodSearchView: View {
                                 FoodRowView(
                                     name: food.name,
                                     brand: food.brand,
-                                    caloriesPer100g: food.caloriesPer100g
+                                    caloriesPer100g: food.caloriesPer100g,
+                                    nutriscoreGrade: food.nutriscoreGrade
                                 )
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -242,7 +243,8 @@ struct FoodSearchView: View {
                                 FoodRowView(
                                     name: product.productName ?? "Unknown",
                                     brand: product.brands,
-                                    caloriesPer100g: product.nutriments?.energyKcal100g ?? 0
+                                    caloriesPer100g: product.nutriments?.energyKcal100g ?? 0,
+                                    nutriscoreGrade: product.nutritionGrades.flatMap { g in ["a","b","c","d","e"].contains(g.lowercased()) ? g.lowercased() : nil }
                                 )
                                 .contentShape(Rectangle())
                                 .onTapGesture {
@@ -277,6 +279,7 @@ struct FoodSearchView: View {
             name: food.name,
             brand: food.brand,
             caloriesPer100g: food.caloriesPer100g,
+            nutriscoreGrade: food.nutriscoreGrade,
             isCustom: true
         )
         .contentShape(Rectangle())

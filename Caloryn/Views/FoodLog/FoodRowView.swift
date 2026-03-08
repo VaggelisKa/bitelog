@@ -4,7 +4,10 @@ struct FoodRowView: View {
     let name: String
     let brand: String?
     let caloriesPer100g: Double
+    var nutriscoreGrade: String? = nil
     var isCustom: Bool = false
+
+    @AppStorage("showNutriscore") private var showNutriscore = true
 
     var body: some View {
         HStack {
@@ -22,6 +25,10 @@ struct FoodRowView: View {
                             .padding(.horizontal, 5)
                             .padding(.vertical, 2)
                             .background(CalorynTheme.sage.opacity(0.15), in: .capsule)
+                    }
+
+                    if showNutriscore, let grade = nutriscoreGrade {
+                        NutriscoreBadge(grade: grade)
                     }
                 }
 
