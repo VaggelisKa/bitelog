@@ -74,9 +74,6 @@ struct MealSectionView: View {
                         Text("No food logged yet")
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textSecondary)
-                        Text("Tap to add")
-                            .font(.caption2)
-                            .foregroundStyle(CalorynTheme.sage.opacity(0.9))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)

@@ -16,7 +16,8 @@ final class FoodSearchService {
     func search(query: String) {
         searchTask?.cancel()
 
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else {
             searchResults = []
             isSearching = false
             return
@@ -27,21 +28,9 @@ final class FoodSearchService {
 
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
-
             guard !Task.isCancelled else { return }
 
-            do {
-                let results = try await performSearch(query: query)
-                if !Task.isCancelled {
-                    searchResults = results
-                    isSearching = false
-                }
-            } catch {
-                if !Task.isCancelled {
-                    errorMessage = "Search failed. Check your connection."
-                    isSearching = false
-                }
-            }
+            await performProgressiveSearch(query: trimmed)
         }
     }
 
@@ -84,37 +73,123 @@ final class FoodSearchService {
         "lang",
         "countries_tags"
     ].joined(separator: ",")
-    private static let searchPageSize = 48
+    private static let globalPageSize = 24
+    private static let countryPageSize = 24
+    private static let minimumCountryResultsBeforeSkippingFallback = 8
+    private static let minimumStrongCountryMatchesBeforeSkippingFallback = 5
+    private static let strongNameMatchThreshold = 900
 
-    private func performSearch(query: String) async throws -> [OpenFoodFactsProduct] {
+    private func performProgressiveSearch(query: String) async {
         let localeContext = SearchLocaleContext.current
+        let normalizedQuery = normalizeSearchText(query)
+        let queryTokens = normalizedQuery.split(separator: " ").map(String.init)
+
+        guard let countryQuery = buildCountryFilteredQuery(query: query, localeContext: localeContext) else {
+            let globalResults = (try? await fetchGlobalResults(query: query, localeContext: localeContext)) ?? []
+            guard !Task.isCancelled else { return }
+
+            searchResults = rankResults(globalResults, for: query, localeContext: localeContext)
+            isSearching = false
+            return
+        }
+
+        let countryResults = (try? await fetchCountryResults(query: countryQuery, localeContext: localeContext)) ?? []
+        guard !Task.isCancelled else { return }
+
+        if !countryResults.isEmpty {
+            searchResults = rankResults(countryResults, for: query, localeContext: localeContext)
+        }
+
+        let shouldFetchFallback = shouldFetchGlobalFallback(
+            countryResults: countryResults,
+            normalizedQuery: normalizedQuery,
+            queryTokens: queryTokens
+        )
+        guard shouldFetchFallback else {
+            isSearching = false
+            return
+        }
+
+        let globalResults = (try? await fetchGlobalResults(query: query, localeContext: localeContext)) ?? []
+        guard !Task.isCancelled else { return }
+
+        let rankedCountryResults = rankResults(countryResults, for: query, localeContext: localeContext)
+        let rankedGlobalResults = rankResults(globalResults, for: query, localeContext: localeContext)
+        searchResults = mergeResults(primary: rankedCountryResults, secondary: rankedGlobalResults)
+        isSearching = false
+    }
+
+    private func fetchGlobalResults(
+        query: String,
+        localeContext: SearchLocaleContext
+    ) async throws -> [OpenFoodFactsProduct] {
+        try await fetchSearchResults(
+            query: query,
+            pageSize: Self.globalPageSize,
+            localeContext: localeContext
+        )
+    }
+
+    private func fetchCountryResults(
+        query: String,
+        localeContext: SearchLocaleContext
+    ) async throws -> [OpenFoodFactsProduct] {
+        return try await fetchSearchResults(
+            query: query,
+            pageSize: Self.countryPageSize,
+            localeContext: localeContext
+        )
+    }
+
+    private func fetchSearchResults(
+        query: String,
+        pageSize: Int,
+        localeContext: SearchLocaleContext
+    ) async throws -> [OpenFoodFactsProduct] {
         var components = URLComponents(string: "\(Self.searchBaseURL)/search")
         components?.queryItems = [
             URLQueryItem(name: "q", value: query),
             URLQueryItem(name: "fields", value: Self.searchFields),
-            URLQueryItem(name: "page_size", value: String(Self.searchPageSize)),
+            URLQueryItem(name: "page_size", value: String(pageSize)),
             URLQueryItem(name: "langs", value: localeContext.preferredLanguageCodes.joined(separator: ","))
         ]
 
-        guard let url = components?.url else {
-            throw URLError(.badURL)
-        }
+        guard let url = components?.url else { throw URLError(.badURL) }
 
-        var request = URLRequest(url: url, timeoutInterval: 10)
+        var request = URLRequest(url: url, timeoutInterval: 8)
         request.setValue(Self.userAgent, forHTTPHeaderField: "User-Agent")
 
         let (data, _) = try await URLSession.shared.data(for: request)
         let response = try JSONDecoder().decode(SearchResponse.self, from: data)
 
-        let candidates = response.hits.filter { hit in
-            hit.productName != nil && hit.nutriments?.energyKcal100g != nil
-        }
-
-        return rankResults(candidates, for: query, localeContext: localeContext)
+        return response.hits.filter { $0.productName != nil && $0.nutriments?.energyKcal100g != nil }
     }
 
-    // The API relevance can surface foreign-language matches early, so we
-    // re-rank candidates toward the user's query, language, and region.
+    private func mergeResults(
+        primary: [OpenFoodFactsProduct],
+        secondary: [OpenFoodFactsProduct]
+    ) -> [OpenFoodFactsProduct] {
+        var seen = Set<String>()
+        var merged: [OpenFoodFactsProduct] = []
+
+        for product in primary {
+            if let code = product.code, seen.insert(code).inserted {
+                merged.append(product)
+            } else if product.code == nil {
+                merged.append(product)
+            }
+        }
+        for product in secondary {
+            if let code = product.code, seen.insert(code).inserted {
+                merged.append(product)
+            } else if product.code == nil {
+                merged.append(product)
+            }
+        }
+
+        return merged
+    }
+
     private func rankResults(
         _ products: [OpenFoodFactsProduct],
         for query: String,
@@ -158,49 +233,189 @@ final class FoodSearchService {
     ) -> Int {
         let normalizedName = normalizeSearchText(product.productName ?? "")
         let normalizedBrand = normalizeSearchText(product.brands ?? "")
+        let nameWords = Set(normalizedName.split(separator: " ").map(String.init))
+        let brandWords = Set(normalizedBrand.split(separator: " ").map(String.init))
         let productLanguage = product.lang?.lowercased()
 
-        var score = 0
+        var s = 0
 
-        if !normalizedQuery.isEmpty {
-            if normalizedName == normalizedQuery {
-                score += 1_200
-            } else if normalizedName.hasPrefix(normalizedQuery) {
-                score += 900
-            } else if normalizedName.contains(normalizedQuery) {
-                score += 700
+        guard !normalizedQuery.isEmpty else { return s }
+
+        // Country-vs-global ordering is decided before local scoring.
+        // Inside each tier, product name should dominate brand matches.
+        if normalizedName == normalizedQuery {
+            s += 2_400
+        } else if normalizedName.hasPrefix(normalizedQuery) {
+            s += 1_800
+        } else if normalizedName.contains(normalizedQuery) {
+            s += 1_200
+        }
+
+        if normalizedBrand == normalizedQuery {
+            s += 140
+        } else if normalizedBrand.contains(normalizedQuery) {
+            s += 80
+        }
+
+        if queryTokens.count > 1 {
+            let allNameTokensMatch = queryTokens.allSatisfy { token in
+                nameWords.contains { $0.hasPrefix(token) || token.hasPrefix($0) }
             }
-
-            if normalizedBrand.contains(normalizedQuery) {
-                score += 180
-            }
-
-            for token in queryTokens where !token.isEmpty {
-                if normalizedName.contains(token) {
-                    score += 120
+            if allNameTokensMatch {
+                s += 700
+            } else {
+                let allCombinedTokensMatch = queryTokens.allSatisfy { token in
+                    nameWords.contains { $0.hasPrefix(token) || token.hasPrefix($0) }
+                    || brandWords.contains { $0.hasPrefix(token) || token.hasPrefix($0) }
                 }
-                if normalizedBrand.contains(token) {
-                    score += 40
+                if allCombinedTokensMatch {
+                    s += 220
                 }
             }
+        }
+
+        var nameTokenHits = 0
+        var brandTokenHits = 0
+        for token in queryTokens where !token.isEmpty {
+            let nameWordHit = nameWords.contains { $0.hasPrefix(token) || $0 == token }
+            if nameWordHit {
+                s += 220
+                nameTokenHits += 1
+            } else if normalizedName.contains(token) {
+                s += 100
+                nameTokenHits += 1
+            }
+
+            let brandWordHit = brandWords.contains { $0.hasPrefix(token) || $0 == token }
+            if brandWordHit {
+                s += 35
+                brandTokenHits += 1
+            } else if normalizedBrand.contains(token) {
+                s += 15
+                brandTokenHits += 1
+            }
+        }
+
+        if nameTokenHits > 0 && brandTokenHits > 0 && queryTokens.count > 1 {
+            s += 75
         }
 
         if let productLanguage {
             if localeContext.preferredLanguageCodes.first == productLanguage {
-                score += 325
+                s += 120
             } else if localeContext.preferredLanguageCodes.contains(productLanguage) {
-                score += 240
+                s += 60
             }
         }
 
-        if let preferredCountryTag = localeContext.preferredCountryTag,
-           product.countriesTags?.contains(preferredCountryTag) == true {
-            score += 280
+        if product.servingQuantityG != nil || product.servingSize != nil {
+            s += 25
+        }
+        if product.nutritionGrades != nil {
+            s += 15
+        }
+        if product.brands != nil, !product.brands!.isEmpty {
+            s += 10
         }
 
-        score += max(0, 40 - originalIndex)
+        s += max(0, 25 - originalIndex)
+
+        return s
+    }
+
+    private func shouldFetchGlobalFallback(
+        countryResults: [OpenFoodFactsProduct],
+        normalizedQuery: String,
+        queryTokens: [String]
+    ) -> Bool {
+        guard !countryResults.isEmpty else { return true }
+        guard countryResults.count >= Self.minimumCountryResultsBeforeSkippingFallback else { return true }
+
+        let strongMatchCount = countryResults.filter {
+            nameMatchStrength(for: $0, normalizedQuery: normalizedQuery, queryTokens: queryTokens) >= Self.strongNameMatchThreshold
+        }.count
+
+        return strongMatchCount < Self.minimumStrongCountryMatchesBeforeSkippingFallback
+    }
+
+    private func nameMatchStrength(
+        for product: OpenFoodFactsProduct,
+        normalizedQuery: String,
+        queryTokens: [String]
+    ) -> Int {
+        let normalizedName = normalizeSearchText(product.productName ?? "")
+        let nameWords = Set(normalizedName.split(separator: " ").map(String.init))
+        var score = 0
+
+        guard !normalizedQuery.isEmpty else { return score }
+
+        if normalizedName == normalizedQuery {
+            score += 2_400
+        } else if normalizedName.hasPrefix(normalizedQuery) {
+            score += 1_800
+        } else if normalizedName.contains(normalizedQuery) {
+            score += 1_200
+        }
+
+        if queryTokens.count > 1 {
+            let allNameTokensMatch = queryTokens.allSatisfy { token in
+                nameWords.contains { $0.hasPrefix(token) || token.hasPrefix($0) }
+            }
+            if allNameTokensMatch {
+                score += 700
+            }
+        }
+
+        for token in queryTokens where !token.isEmpty {
+            if nameWords.contains(where: { $0.hasPrefix(token) || $0 == token }) {
+                score += 220
+            } else if normalizedName.contains(token) {
+                score += 100
+            }
+        }
 
         return score
+    }
+
+    private func buildCountryFilteredQuery(
+        query: String,
+        localeContext: SearchLocaleContext
+    ) -> String? {
+        guard
+            let countryTag = localeContext.preferredCountryTag,
+            let safeCountryTag = luceneSafeCountryTag(countryTag)
+        else {
+            return nil
+        }
+
+        let escapedQuery = escapeLuceneSearchText(query)
+        guard !escapedQuery.isEmpty else { return nil }
+
+        return #"countries_tags:"\#(safeCountryTag)" \#(escapedQuery)"#
+    }
+
+    private func luceneSafeCountryTag(_ countryTag: String) -> String? {
+        let allowedCharacters = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789:-")
+        guard countryTag.unicodeScalars.allSatisfy(allowedCharacters.contains) else {
+            return nil
+        }
+        return countryTag
+    }
+
+    private func escapeLuceneSearchText(_ text: String) -> String {
+        let reservedCharacters = Set(#"+-!(){}[]^"~*?:\/&|"#.map(\.self))
+        var escaped = ""
+
+        for character in text {
+            if reservedCharacters.contains(character) {
+                escaped.append("\\")
+            }
+            escaped.append(character)
+        }
+
+        return escaped
+            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private func normalizeSearchText(_ text: String) -> String {
@@ -292,10 +507,6 @@ final class FoodSearchService {
 
 struct SearchResponse: Decodable {
     let hits: [OpenFoodFactsProduct]
-}
-
-struct OpenFoodFactsResponse: Decodable {
-    let products: [OpenFoodFactsProduct]
 }
 
 struct OpenFoodFactsProduct: Decodable, Identifiable {
