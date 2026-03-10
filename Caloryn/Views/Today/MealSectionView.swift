@@ -31,45 +31,59 @@ struct MealSectionView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: mealType.iconName)
-                    .foregroundStyle(CalorynTheme.sage)
-                    .font(.title3)
+            Button(action: onAdd) {
+                HStack {
+                    Image(systemName: mealType.iconName)
+                        .foregroundStyle(CalorynTheme.sage)
+                        .font(.title2)
 
-                Text(sectionTitle)
-                    .font(CalorynTheme.itemTitle)
-                    .foregroundStyle(CalorynTheme.textPrimary)
+                    Text(sectionTitle)
+                        .font(CalorynTheme.itemTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
 
-                Spacer()
+                    Spacer()
 
-                VStack(alignment: .trailing, spacing: 2) {
-                    if !totalCalories.isZero {
-                        Text(totalCalories.kcalFormatted)
-                            .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(CalorynTheme.textSecondary)
+                    VStack(alignment: .trailing, spacing: 2) {
+                        if !totalCalories.isZero {
+                            Text(totalCalories.kcalFormatted)
+                                .font(CalorynTheme.numericCaption)
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                        }
+
+                        if !entries.isEmpty, !totalProtein.isZero {
+                            Text("\(totalProtein.macroFormatted) protein")
+                                .font(CalorynTheme.numericCaption)
+                                .foregroundStyle(CalorynTheme.proteinColor)
+                        }
                     }
 
-                    if !entries.isEmpty, !totalProtein.isZero {
-                        Text("\(totalProtein.macroFormatted) protein")
-                            .font(CalorynTheme.numericCaption)
-                            .foregroundStyle(CalorynTheme.proteinColor)
-                    }
-                }
-
-                Button(action: onAdd) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.title3)
+                        .font(.title2)
                         .foregroundStyle(CalorynTheme.sage)
                 }
-                .accessibilityLabel("Add food to \(sectionTitle)")
+                .padding(.vertical, 4)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add food to \(sectionTitle)")
+            .accessibilityHint("Double tap to add food")
 
             if entries.isEmpty {
-                Text("No food logged yet")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 8)
+                Button(action: onAdd) {
+                    VStack(spacing: 4) {
+                        Text("No food logged yet")
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                        Text("Tap to add")
+                            .font(.caption2)
+                            .foregroundStyle(CalorynTheme.sage.opacity(0.9))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add food to \(sectionTitle)")
             } else {
                 ForEach(entries) { entry in
                     MealEntryRow(entry: entry) {
