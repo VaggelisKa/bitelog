@@ -5,9 +5,22 @@ struct FoodRowView: View {
     let brand: String?
     let caloriesPer100g: Double
     var nutriscoreGrade: String? = nil
+    var servingDescription: String? = nil
+    var caloriesPerServing: Double? = nil
     var isCustom: Bool = false
 
     @AppStorage("showNutriscore") private var showNutriscore = true
+
+    private var subtitle: String? {
+        var parts: [String] = []
+        if let brand, !brand.isEmpty {
+            parts.append(brand)
+        }
+        if let srv = servingDescription, !srv.isEmpty {
+            parts.append(srv)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
 
     var body: some View {
         HStack {
@@ -32,8 +45,8 @@ struct FoodRowView: View {
                     }
                 }
 
-                if let brand, !brand.isEmpty {
-                    Text(brand)
+                if let subtitle {
+                    Text(subtitle)
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                         .lineLimit(1)
@@ -42,13 +55,24 @@ struct FoodRowView: View {
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("\(Int(caloriesPer100g))")
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(CalorynTheme.textPrimary)
-                Text("kcal/100g")
-                    .font(.system(.caption2, design: .rounded))
-                    .foregroundStyle(CalorynTheme.textSecondary)
+            if let srvCal = caloriesPerServing {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(srvCal))")
+                        .font(CalorynTheme.numericBody)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                    Text("kcal/srv")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
+            } else {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text("\(Int(caloriesPer100g))")
+                        .font(CalorynTheme.numericBody)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                    Text("kcal/100g")
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
             }
         }
         .padding(.vertical, 4)
@@ -57,8 +81,8 @@ struct FoodRowView: View {
 
 #Preview {
     List {
-        FoodRowView(name: "Rugbroed", brand: "Schulstad", caloriesPer100g: 210)
-        FoodRowView(name: "Skyr", brand: "Arla", caloriesPer100g: 63)
+        FoodRowView(name: "Rugbroed", brand: "Schulstad", caloriesPer100g: 210, servingDescription: "1 slice (45g)", caloriesPerServing: 94)
+        FoodRowView(name: "Skyr", brand: "Arla", caloriesPer100g: 63, servingDescription: "170g")
         FoodRowView(name: "Chicken Breast", brand: nil, caloriesPer100g: 165)
         FoodRowView(name: "Nick's Pizza", brand: "Homemade", caloriesPer100g: 267, isCustom: true)
     }
