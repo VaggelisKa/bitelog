@@ -52,6 +52,8 @@ struct PortionPickerView: View {
 
                     caloriePreview
 
+                    servingPicker
+
                     portionInput
 
                     macroPreview
@@ -158,6 +160,54 @@ struct PortionPickerView: View {
         .glassCard()
     }
 
+    @ViewBuilder
+    private var servingPicker: some View {
+        if let info = foodItem.servingInfo {
+            let maxCount = max(2, min(5, Int(500 / info.gramsPerUnit)))
+
+            VStack(alignment: .leading, spacing: 12) {
+                Text("SERVINGS")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+
+                GlassEffectContainer(spacing: 8) {
+                    HStack(spacing: 8) {
+                        ForEach(1...maxCount, id: \.self) { count in
+                            let grams = Double(count) * info.gramsPerUnit
+                            let isSelected = abs(portionGrams - grams) < 0.5
+                            Button {
+                                withAnimation(.smooth(duration: 0.2)) {
+                                    portionGrams = grams
+                                    portionText = "\(Int(grams))"
+                                }
+                            } label: {
+                                VStack(spacing: 2) {
+                                    Text(info.label(for: count))
+                                        .font(CalorynTheme.numericCaption)
+                                    Text("\(Int(grams))g")
+                                        .font(.system(size: 10, design: .rounded))
+                                        .opacity(0.7)
+                                }
+                                .foregroundStyle(isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary)
+                                .padding(.horizontal, quickButtonPadding)
+                                .padding(.vertical, 8)
+                                .lineLimit(1)
+                            }
+                            .buttonStyle(.plain)
+                            .glassEffect(
+                                isSelected
+                                    ? .regular.tint(CalorynTheme.sage).interactive()
+                                    : .regular.interactive(),
+                                in: .capsule
+                            )
+                        }
+                    }
+                }
+            }
+            .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        }
+    }
+
     private var portionInput: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("PORTION SIZE")
@@ -211,7 +261,7 @@ struct PortionPickerView: View {
                         )
                     }
 
-                    if let serving = foodItem.defaultServingG, serving > 0 {
+                    if foodItem.servingInfo == nil, let serving = foodItem.defaultServingG, serving > 0 {
                         let isServingSelected = portionGrams == serving
                         let servingLabel = foodItem.servingDescription ?? "\(Int(serving))g"
                         Button {
@@ -311,7 +361,7 @@ struct PortionPickerView: View {
     }
 }
 
-#Preview {
+#Preview("Cup serving") {
     let food = FoodItem(
         name: "Skyr",
         brand: "Arla",
@@ -325,6 +375,44 @@ struct PortionPickerView: View {
     return PortionPickerView(
         foodItem: food,
         mealType: .lunch,
+        logDate: .now,
+        isNewFood: true
+    )
+    .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+}
+
+#Preview("Slice serving") {
+    let food = FoodItem(
+        name: "Rugbroed",
+        brand: "Schulstad",
+        caloriesPer100g: 210,
+        proteinPer100g: 7,
+        carbsPer100g: 36,
+        fatPer100g: 2,
+        defaultServingG: 45,
+        servingDescription: "1 slice (45g)"
+    )
+    return PortionPickerView(
+        foodItem: food,
+        mealType: .lunch,
+        logDate: .now,
+        isNewFood: true
+    )
+    .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+}
+
+#Preview("No serving info") {
+    let food = FoodItem(
+        name: "Olive Oil",
+        brand: "Filippo Berio",
+        caloriesPer100g: 884,
+        proteinPer100g: 0,
+        carbsPer100g: 0,
+        fatPer100g: 100
+    )
+    return PortionPickerView(
+        foodItem: food,
+        mealType: .dinner,
         logDate: .now,
         isNewFood: true
     )
