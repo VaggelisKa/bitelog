@@ -68,4 +68,63 @@ final class FoodItem {
     func fat(forGrams grams: Double) -> Double {
         fatPer100g * grams / 100
     }
+
+    var servingInfo: ServingInfo? {
+        guard let description = servingDescription,
+              let gramsTotal = defaultServingG,
+              gramsTotal > 0 else { return nil }
+
+        let excludedUnits: Set<String> = [
+            "g", "gr", "gram", "grams", "gramos",
+            "ml", "milliliter", "milliliters", "millilitres",
+            "kg", "kilogram", "kilograms",
+            "l", "liter", "liters", "litre", "litres",
+            "oz", "ounce", "ounces", "fl",
+            "lb", "pound", "pounds",
+            "cl", "dl", "serving", "portion"
+        ]
+
+        guard let match = description.wholeMatch(
+            of: /^\s*(\d+(?:[.,]\d+)?)\s+(.+?)(?:\s*\(.*\))?\s*$/
+        ) else { return nil }
+
+        let countStr = String(match.1).replacingOccurrences(of: ",", with: ".")
+        guard let count = Double(countStr), count > 0 else { return nil }
+
+        let unit = String(match.2).trimmingCharacters(in: .whitespaces).lowercased()
+        guard !unit.isEmpty, !excludedUnits.contains(unit) else { return nil }
+
+        let gramsPerUnit = gramsTotal / count
+        guard gramsPerUnit >= 1 else { return nil }
+
+        let singular: String
+        let plural: String
+        if unit.hasSuffix("ies") {
+            singular = String(unit.dropLast(3)) + "y"
+            plural = unit
+        } else if unit.hasSuffix("ches") || unit.hasSuffix("shes")
+                    || unit.hasSuffix("ses") || unit.hasSuffix("xes")
+                    || unit.hasSuffix("zes") {
+            singular = String(unit.dropLast(2))
+            plural = unit
+        } else if unit.hasSuffix("s") && !unit.hasSuffix("ss") {
+            singular = String(unit.dropLast())
+            plural = unit
+        } else {
+            singular = unit
+            plural = unit + "s"
+        }
+
+        return ServingInfo(unitName: singular, gramsPerUnit: gramsPerUnit, pluralName: plural)
+    }
+}
+
+struct ServingInfo {
+    let unitName: String
+    let gramsPerUnit: Double
+    let pluralName: String
+
+    func label(for count: Int) -> String {
+        count == 1 ? "1 \(unitName)" : "\(count) \(pluralName)"
+    }
 }

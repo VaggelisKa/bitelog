@@ -13,18 +13,18 @@ struct PortionPickerView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var portionGrams: Double = 100
-    @State private var portionText: String = "100"
     @State private var selectedMeal: MealType
     @State private var showingCustomFoodEditor = false
+    @State private var portionMode: PortionMode = .grams
+    @State private var selectedGramStep: Int = 100
+    @State private var selectedServingCount: Int = 1
 
-    @ScaledMetric private var quickButtonPadding: CGFloat = 10
+    private enum PortionMode: Hashable {
+        case grams
+        case serving
+    }
 
-    private let quickPortions: [(label: String, grams: Double)] = [
-        ("50g", 50),
-        ("100g", 100),
-        ("150g", 150),
-        ("200g", 200),
-    ]
+    private static let gramOptions: [Int] = Array(stride(from: 5, through: 500, by: 5))
 
     init(foodItem: FoodItem, mealType: MealType, logDate: Date, isNewFood: Bool, snackIndex: Int = 0, onLogged: (() -> Void)? = nil) {
         self.foodItem = foodItem
@@ -34,9 +34,17 @@ struct PortionPickerView: View {
         self.snackIndex = snackIndex
         self.onLogged = onLogged
         self._selectedMeal = State(initialValue: mealType)
+
         let defaultPortion = foodItem.defaultServingG ?? 100
         self._portionGrams = State(initialValue: defaultPortion)
-        self._portionText = State(initialValue: "\(Int(defaultPortion))")
+
+        let nearestStep = max(5, min(500, Int(round(defaultPortion / 5)) * 5))
+        self._selectedGramStep = State(initialValue: nearestStep)
+
+        if foodItem.servingInfo != nil {
+            self._portionMode = State(initialValue: .serving)
+            self._selectedServingCount = State(initialValue: 1)
+        }
     }
 
     private var previewCalories: Double { foodItem.calories(forGrams: portionGrams) }
@@ -51,7 +59,7 @@ struct PortionPickerView: View {
 
                 caloriePreview
 
-                portionInput
+                portionPicker
 
                 macroPreview
 
@@ -146,83 +154,73 @@ struct PortionPickerView: View {
         .glassCard()
     }
 
-    private var portionInput: some View {
+    private var maxServingCount: Int {
+        guard let info = foodItem.servingInfo else { return 1 }
+        return max(2, min(10, Int(500 / info.gramsPerUnit)))
+    }
+
+    private var portionPicker: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("PORTION SIZE")
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
-            HStack {
-                TextField("Grams", text: $portionText)
-                    .font(CalorynTheme.numericBody)
-                    .keyboardType(.numberPad)
-                    .textFieldStyle(.roundedBorder)
-                    .onChange(of: portionText) {
-                        if let value = Double(portionText), value > 0 {
-                            portionGrams = value
+            HStack(spacing: 0) {
+                Group {
+                    if portionMode == .grams {
+                        Picker("Amount", selection: $selectedGramStep) {
+                            ForEach(Self.gramOptions, id: \.self) { g in
+                                Text("\(g)").tag(g)
+                            }
+                        }
+                    } else {
+                        Picker("Count", selection: $selectedServingCount) {
+                            ForEach(1...maxServingCount, id: \.self) { n in
+                                Text("\(n)").tag(n)
+                            }
                         }
                     }
-
-                Text("grams")
-                    .font(CalorynTheme.bodyText)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-            }
-
-            Slider(value: $portionGrams, in: 1...500, step: 1)
-                .tint(CalorynTheme.sage)
-                .onChange(of: portionGrams) {
-                    portionText = "\(Int(portionGrams))"
                 }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
 
-            GlassEffectContainer(spacing: 8) {
-                HStack(spacing: 8) {
-                    ForEach(quickPortions, id: \.grams) { portion in
-                        let isSelected = portionGrams == portion.grams
-                        Button {
-                            withAnimation(.smooth(duration: 0.2)) {
-                                portionGrams = portion.grams
-                                portionText = "\(Int(portion.grams))"
-                            }
-                        } label: {
-                            Text(portion.label)
-                                .font(CalorynTheme.numericCaption)
-                                .foregroundStyle(isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary)
-                                .padding(.horizontal, quickButtonPadding)
-                                .padding(.vertical, 8)
-                        }
-                        .buttonStyle(.plain)
-                        .glassEffect(
-                            isSelected
-                                ? .regular.tint(CalorynTheme.sage).interactive()
-                                : .regular.interactive(),
-                            in: .capsule
-                        )
+                if let info = foodItem.servingInfo {
+                    Picker("Unit", selection: $portionMode) {
+                        Text("grams").tag(PortionMode.grams)
+                        Text(info.unitName).tag(PortionMode.serving)
                     }
-
-                    if let serving = foodItem.defaultServingG, serving > 0 {
-                        let isServingSelected = portionGrams == serving
-                        let servingLabel = foodItem.servingDescription ?? "\(Int(serving))g"
-                        Button {
-                            withAnimation(.smooth(duration: 0.2)) {
-                                portionGrams = serving
-                                portionText = "\(Int(serving))"
-                            }
-                        } label: {
-                            Text(servingLabel)
-                                .font(CalorynTheme.numericCaption)
-                                .foregroundStyle(isServingSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary)
-                                .padding(.horizontal, quickButtonPadding)
-                                .padding(.vertical, 8)
-                                .lineLimit(1)
-                        }
-                        .buttonStyle(.plain)
-                        .glassEffect(
-                            isServingSelected
-                                ? .regular.tint(CalorynTheme.sage).interactive()
-                                : .regular.interactive(),
-                            in: .capsule
-                        )
-                    }
+                    .pickerStyle(.wheel)
+                    .frame(width: 120)
+                } else {
+                    Text("grams")
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .frame(width: 120)
+                }
+            }
+            .frame(height: 150)
+            .clipped()
+            .onChange(of: selectedGramStep) {
+                guard portionMode == .grams else { return }
+                portionGrams = Double(selectedGramStep)
+            }
+            .onChange(of: selectedServingCount) {
+                guard portionMode == .serving, let info = foodItem.servingInfo else { return }
+                let grams = Double(selectedServingCount) * info.gramsPerUnit
+                portionGrams = grams
+            }
+            .onChange(of: portionMode) {
+                switch portionMode {
+                case .grams:
+                    let nearest = max(5, min(500, Int(round(portionGrams / 5)) * 5))
+                    selectedGramStep = nearest
+                    portionGrams = Double(nearest)
+                case .serving:
+                    guard let info = foodItem.servingInfo else { return }
+                    let count = max(1, min(maxServingCount, Int(round(portionGrams / info.gramsPerUnit))))
+                    selectedServingCount = count
+                    let grams = Double(count) * info.gramsPerUnit
+                    portionGrams = grams
                 }
             }
         }
@@ -298,11 +296,16 @@ struct PortionPickerView: View {
     private func updatePortionFromDefaultServing() {
         let defaultPortion = foodItem.defaultServingG ?? 100
         portionGrams = defaultPortion
-        portionText = "\(Int(defaultPortion))"
+        selectedGramStep = max(5, min(500, Int(round(defaultPortion / 5)) * 5))
+        if let info = foodItem.servingInfo {
+            portionMode = .serving
+            let count = max(1, min(maxServingCount, Int(round(defaultPortion / info.gramsPerUnit))))
+            selectedServingCount = count
+        }
     }
 }
 
-#Preview {
+#Preview("Cup serving") {
     let food = FoodItem(
         name: "Skyr",
         brand: "Arla",
@@ -321,5 +324,43 @@ struct PortionPickerView: View {
             isNewFood: true
         )
     }
+    .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+}
+
+#Preview("Slice serving") {
+    let food = FoodItem(
+        name: "Rugbroed",
+        brand: "Schulstad",
+        caloriesPer100g: 210,
+        proteinPer100g: 7,
+        carbsPer100g: 36,
+        fatPer100g: 2,
+        defaultServingG: 45,
+        servingDescription: "1 slice (45g)"
+    )
+    return PortionPickerView(
+        foodItem: food,
+        mealType: .lunch,
+        logDate: .now,
+        isNewFood: true
+    )
+    .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+}
+
+#Preview("No serving info") {
+    let food = FoodItem(
+        name: "Olive Oil",
+        brand: "Filippo Berio",
+        caloriesPer100g: 884,
+        proteinPer100g: 0,
+        carbsPer100g: 0,
+        fatPer100g: 100
+    )
+    return PortionPickerView(
+        foodItem: food,
+        mealType: .dinner,
+        logDate: .now,
+        isNewFood: true
+    )
     .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
 }

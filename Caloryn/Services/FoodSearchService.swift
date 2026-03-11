@@ -20,6 +20,7 @@ final class FoodSearchService {
         "serving_size",
         "serving_quantity",
         "product_quantity",
+        "quantity",
         "nutriments",
         "nutrition_grades",
         "lang",
@@ -79,6 +80,7 @@ final class FoodSearchService {
 
     func createFoodItem(from product: OpenFoodFactsProduct) -> FoodItem {
         let nutriments = product.nutriments
+        let (defaultServingG, servingDescription) = product.effectiveServingInfo
         return FoodItem(
             name: product.productName ?? "Unknown",
             brand: product.brands,
@@ -87,8 +89,8 @@ final class FoodSearchService {
             proteinPer100g: nutriments?.proteins100g ?? 0,
             carbsPer100g: nutriments?.carbohydrates100g ?? 0,
             fatPer100g: nutriments?.fat100g ?? 0,
-            defaultServingG: product.servingQuantityG,
-            servingDescription: product.formattedServingDescription,
+            defaultServingG: defaultServingG,
+            servingDescription: servingDescription,
             nutriscoreGrade: Self.validNutriscoreGrade(product.nutritionGrades)
         )
     }
@@ -169,12 +171,27 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
     let servingSize: String?
     let servingQuantityG: Double?
     let productQuantity: Double?
+    let quantity: String?
     let nutriments: OFFNutriments?
     let nutritionGrades: String?
     let lang: String?
     let countriesTags: [String]?
 
     var id: String { code ?? UUID().uuidString }
+
+    /// Parses grams from quantity strings like "350g", "50 g", "1 oz (28 g)".
+    private var quantityGrams: Double? {
+        guard let q = quantity, !q.isEmpty else { return nil }
+        let pattern = #"(\d+(?:[.,]\d+)?)\s*g\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(q.startIndex..., in: q)
+        guard let match = regex.firstMatch(in: q, range: range), match.numberOfRanges > 1 else { return nil }
+        let numRange = match.range(at: 1)
+        guard let swiftRange = Range(numRange, in: q) else { return nil }
+        let numStr = String(q[swiftRange]).replacingOccurrences(of: ",", with: ".")
+        guard let value = Double(numStr), value > 0 else { return nil }
+        return value
+    }
 
     var formattedServingDescription: String? {
         if let raw = servingSize, !raw.isEmpty {
@@ -186,10 +203,25 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         return nil
     }
 
+    /// Serving info with fallbacks: serving_quantity → product_quantity → parsed quantity string.
+    var effectiveServingInfo: (defaultServingG: Double?, servingDescription: String?) {
+        if let g = servingQuantityG, g > 0 {
+            return (g, formattedServingDescription)
+        }
+        if let packG = productQuantity, packG > 0 {
+            return (packG, "1 pack (\(Int(packG))g)")
+        }
+        if let packG = quantityGrams {
+            return (packG, "1 pack (\(Int(packG))g)")
+        }
+        return (nil, nil)
+    }
+
     var caloriesPerServing: Double? {
-        guard let g = servingQuantityG, g > 0,
+        let g = servingQuantityG ?? productQuantity ?? quantityGrams
+        guard let grams = g, grams > 0,
               let kcal100 = nutriments?.energyKcal100g else { return nil }
-        return kcal100 * g / 100
+        return kcal100 * grams / 100
     }
 
     enum CodingKeys: String, CodingKey {
@@ -199,6 +231,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         case servingSize = "serving_size"
         case servingQuantityG = "serving_quantity"
         case productQuantity = "product_quantity"
+        case quantity
         case nutriments
         case nutritionGrades = "nutrition_grades"
         case lang
@@ -210,6 +243,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         code = try container.decodeIfPresent(String.self, forKey: .code)
         productName = try container.decodeIfPresent(String.self, forKey: .productName)
         servingSize = try container.decodeIfPresent(String.self, forKey: .servingSize)
+        quantity = try container.decodeIfPresent(String.self, forKey: .quantity)
         nutriments = try container.decodeIfPresent(OFFNutriments.self, forKey: .nutriments)
         nutritionGrades = try container.decodeIfPresent(String.self, forKey: .nutritionGrades)
         lang = try container.decodeIfPresent(String.self, forKey: .lang)
