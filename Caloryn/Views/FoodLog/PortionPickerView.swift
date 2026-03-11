@@ -131,6 +131,12 @@ struct PortionPickerView: View {
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
+
+            if let serving = foodItem.servingDescription, !serving.isEmpty {
+                Text("Serving: \(serving)")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
         }
         .padding(.top, 8)
     }
@@ -207,17 +213,19 @@ struct PortionPickerView: View {
 
                     if let serving = foodItem.defaultServingG, serving > 0 {
                         let isServingSelected = portionGrams == serving
+                        let servingLabel = foodItem.servingDescription ?? "\(Int(serving))g"
                         Button {
                             withAnimation(.smooth(duration: 0.2)) {
                                 portionGrams = serving
                                 portionText = "\(Int(serving))"
                             }
                         } label: {
-                            Text("1 srv")
+                            Text(servingLabel)
                                 .font(CalorynTheme.numericCaption)
                                 .foregroundStyle(isServingSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary)
                                 .padding(.horizontal, quickButtonPadding)
                                 .padding(.vertical, 8)
+                                .lineLimit(1)
                         }
                         .buttonStyle(.plain)
                         .glassEffect(
@@ -311,7 +319,8 @@ struct PortionPickerView: View {
         proteinPer100g: 11,
         carbsPer100g: 4,
         fatPer100g: 0,
-        defaultServingG: 170
+        defaultServingG: 170,
+        servingDescription: "1 cup (170g)"
     )
     return PortionPickerView(
         foodItem: food,
