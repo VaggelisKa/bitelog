@@ -1,9 +1,6 @@
 import Foundation
 import SwiftData
 
-/// Food search powered by the Search-a-licious API (search.openfoodfacts.org).
-/// We delegate full-text ranking entirely to the API's Elasticsearch backend
-/// and keep only a thin country-scoped → global fallback strategy client-side.
 @Observable
 final class FoodSearchService {
     var searchResults: [OpenFoodFactsProduct] = []
@@ -30,9 +27,6 @@ final class FoodSearchService {
     ].joined(separator: ",")
 
     private static let pageSize = 30
-    private static let countryMinResultsForSkipGlobal = 6
-
-    // MARK: - Public API
 
     func search(query: String) {
         searchTask?.cancel()
@@ -99,42 +93,14 @@ final class FoodSearchService {
         )
     }
 
-    // MARK: - Search Strategy
-
-    /// Country-scoped search first; fall back to global if too few results.
-    /// Ranking is fully delegated to Search-a-licious (Elasticsearch).
     private func performSearch(query: String) async {
         let locale = SearchLocaleContext.current
+        let results = (try? await fetchResults(query: query, locale: locale)) ?? []
+        guard !Task.isCancelled else { return }
 
-        if let countryQuery = buildCountryQuery(query: query, locale: locale) {
-            let countryResults = (try? await fetchResults(query: countryQuery, locale: locale)) ?? []
-            guard !Task.isCancelled else { return }
-
-            if countryResults.count >= Self.countryMinResultsForSkipGlobal {
-                searchResults = countryResults
-                isSearching = false
-                return
-            }
-
-            if !countryResults.isEmpty {
-                searchResults = countryResults
-            }
-
-            let globalResults = (try? await fetchResults(query: query, locale: locale)) ?? []
-            guard !Task.isCancelled else { return }
-
-            searchResults = mergeResults(primary: countryResults, secondary: globalResults)
-            isSearching = false
-        } else {
-            let results = (try? await fetchResults(query: query, locale: locale)) ?? []
-            guard !Task.isCancelled else { return }
-
-            searchResults = results
-            isSearching = false
-        }
+        searchResults = results
+        isSearching = false
     }
-
-    // MARK: - Network
 
     private func fetchResults(
         query: String,
@@ -159,87 +125,19 @@ final class FoodSearchService {
         return response.hits.filter { $0.productName != nil && $0.nutriments?.energyKcal100g != nil }
     }
 
-    // MARK: - Merge (preserves API ordering, deduplicates by barcode)
-
-    private func mergeResults(
-        primary: [OpenFoodFactsProduct],
-        secondary: [OpenFoodFactsProduct]
-    ) -> [OpenFoodFactsProduct] {
-        var seen = Set<String>()
-        var merged: [OpenFoodFactsProduct] = []
-
-        for product in primary {
-            if let code = product.code, seen.insert(code).inserted {
-                merged.append(product)
-            } else if product.code == nil {
-                merged.append(product)
-            }
-        }
-        for product in secondary {
-            if let code = product.code, seen.insert(code).inserted {
-                merged.append(product)
-            } else if product.code == nil {
-                merged.append(product)
-            }
-        }
-
-        return merged
-    }
-
-    // MARK: - Country Query
-
-    private func buildCountryQuery(
-        query: String,
-        locale: SearchLocaleContext
-    ) -> String? {
-        guard
-            let countryTag = locale.preferredCountryTag,
-            let safeTag = sanitizedCountryTag(countryTag)
-        else { return nil }
-
-        let escaped = escapeLuceneSpecials(query)
-        guard !escaped.isEmpty else { return nil }
-
-        return #"countries_tags:"\#(safeTag)" \#(escaped)"#
-    }
-
-    private func sanitizedCountryTag(_ tag: String) -> String? {
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyz0123456789:-")
-        guard tag.unicodeScalars.allSatisfy(allowed.contains) else { return nil }
-        return tag
-    }
-
-    private func escapeLuceneSpecials(_ text: String) -> String {
-        let reserved = Set(#"+-!(){}[]^"~*?:\/&|"#.map(\.self))
-        var escaped = ""
-        for ch in text {
-            if reserved.contains(ch) { escaped.append("\\") }
-            escaped.append(ch)
-        }
-        return escaped
-            .replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression)
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    // MARK: - Helpers
-
     private static func validNutriscoreGrade(_ raw: String?) -> String? {
         guard let letter = raw?.lowercased(), ["a", "b", "c", "d", "e"].contains(letter) else { return nil }
         return letter
     }
 
-    // MARK: - Locale
-
     private struct SearchLocaleContext {
         let preferredLanguageCodes: [String]
-        let preferredCountryTag: String?
 
         static var current: SearchLocaleContext {
             let codes = orderedUnique(
                 Locale.preferredLanguages.compactMap(languageCode(from:)) + ["en"]
             )
-            let country = Locale.autoupdatingCurrent.regionCode.flatMap(countryTag(from:))
-            return SearchLocaleContext(preferredLanguageCodes: codes, preferredCountryTag: country)
+            return SearchLocaleContext(preferredLanguageCodes: codes)
         }
 
         private static func orderedUnique(_ values: [String]) -> [String] {
@@ -257,24 +155,8 @@ final class FoodSearchService {
                 .first?
                 .lowercased()
         }
-
-        private static func countryTag(from regionCode: String) -> String? {
-            let en = Locale(identifier: "en_US_POSIX")
-            guard let name = en.localizedString(forRegionCode: regionCode) else { return nil }
-
-            let slug = name
-                .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: en)
-                .replacingOccurrences(of: "&", with: " and ")
-                .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "-", options: .regularExpression)
-                .trimmingCharacters(in: CharacterSet(charactersIn: "-"))
-
-            guard !slug.isEmpty else { return nil }
-            return "en:\(slug)"
-        }
     }
 }
-
-// MARK: - API Response Models
 
 struct SearchResponse: Decodable {
     let hits: [OpenFoodFactsProduct]
@@ -294,7 +176,6 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
 
     var id: String { code ?? UUID().uuidString }
 
-    /// Human-readable serving description, e.g. "1 slice (30g)" or "30g".
     var formattedServingDescription: String? {
         if let raw = servingSize, !raw.isEmpty {
             return raw
@@ -305,7 +186,6 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         return nil
     }
 
-    /// Calories per serving (if serving weight is known), for display in result rows.
     var caloriesPerServing: Double? {
         guard let g = servingQuantityG, g > 0,
               let kcal100 = nutriments?.energyKcal100g else { return nil }
@@ -335,7 +215,6 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
         lang = try container.decodeIfPresent(String.self, forKey: .lang)
         countriesTags = try container.decodeIfPresent([String].self, forKey: .countriesTags)
 
-        // serving_quantity may arrive as a number or a numeric string
         if let num = try? container.decodeIfPresent(Double.self, forKey: .servingQuantityG) {
             servingQuantityG = num
         } else if let str = try? container.decodeIfPresent(String.self, forKey: .servingQuantityG) {
@@ -344,7 +223,6 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
             servingQuantityG = nil
         }
 
-        // product_quantity may arrive as a number or a numeric string
         if let num = try? container.decodeIfPresent(Double.self, forKey: .productQuantity) {
             productQuantity = num
         } else if let str = try? container.decodeIfPresent(String.self, forKey: .productQuantity) {
@@ -353,7 +231,6 @@ struct OpenFoodFactsProduct: Decodable, Identifiable {
             productQuantity = nil
         }
 
-        // Search-a-licious returns brands as [String]; the barcode API returns String
         if let str = try? container.decodeIfPresent(String.self, forKey: .brands) {
             brands = str
         } else if let arr = try? container.decodeIfPresent([String].self, forKey: .brands) {
