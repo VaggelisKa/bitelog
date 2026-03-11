@@ -15,7 +15,6 @@ struct FoodSearchView: View {
     @State private var searchText = ""
     @State private var selectedProduct: OpenFoodFactsProduct?
     @State private var selectedFoodItem: FoodItem?
-    @State private var shouldDismissAfterLog = false
     @State private var showingScanner = false
     @State private var showingCustomFoodForm = false
     @State private var editingCustomFood: FoodItem?
@@ -71,7 +70,7 @@ struct FoodSearchView: View {
                     .accessibilityLabel("Create Custom Food")
                 }
             }
-            .sheet(item: $selectedProduct, onDismiss: dismissIfNeeded) { product in
+            .navigationDestination(item: $selectedProduct) { product in
                 let food = searchService.createFoodItem(from: product)
                 PortionPickerView(
                     foodItem: food,
@@ -79,16 +78,16 @@ struct FoodSearchView: View {
                     logDate: logDate,
                     isNewFood: true,
                     snackIndex: snackIndex
-                ) { shouldDismissAfterLog = true }
+                ) { dismiss() }
             }
-            .sheet(item: $selectedFoodItem, onDismiss: dismissIfNeeded) { food in
+            .navigationDestination(item: $selectedFoodItem) { food in
                 PortionPickerView(
                     foodItem: food,
                     mealType: mealType,
                     logDate: logDate,
                     isNewFood: false,
                     snackIndex: snackIndex
-                ) { shouldDismissAfterLog = true }
+                ) { dismiss() }
             }
             .sheet(isPresented: $showingCustomFoodForm) {
                 CustomFoodFormView()
@@ -391,12 +390,6 @@ struct FoodSearchView: View {
         generator.notificationOccurred(type)
     }
 
-    private func dismissIfNeeded() {
-        if shouldDismissAfterLog {
-            shouldDismissAfterLog = false
-            dismiss()
-        }
-    }
 }
 
 #Preview {

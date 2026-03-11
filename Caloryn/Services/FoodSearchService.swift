@@ -162,7 +162,7 @@ struct SearchResponse: Decodable {
     let hits: [OpenFoodFactsProduct]
 }
 
-struct OpenFoodFactsProduct: Decodable, Identifiable {
+struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
     let code: String?
     let productName: String?
     let brands: String?
@@ -258,7 +258,7 @@ enum BarcodeLookupError: LocalizedError {
     }
 }
 
-struct OFFNutriments: Decodable {
+struct OFFNutriments: Decodable, Hashable {
     let energyKcal100g: Double?
     let proteins100g: Double?
     let carbohydrates100g: Double?

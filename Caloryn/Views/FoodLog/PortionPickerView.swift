@@ -45,72 +45,58 @@ struct PortionPickerView: View {
     private var previewFat: Double { foodItem.fat(forGrams: portionGrams) }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 24) {
-                    foodHeader
+        ScrollView {
+            VStack(spacing: 24) {
+                foodHeader
 
-                    caloriePreview
+                caloriePreview
 
-                    servingPicker
+                portionInput
 
-                    portionInput
+                macroPreview
 
-                    macroPreview
-
-                    mealSelector
-                }
-                .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.bottom, 100)
+                mealSelector
             }
-            .navigationTitle("Portion")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.bottom, 100)
+        }
+        .navigationTitle("Portion")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if foodItem.isCustom {
+                ToolbarItem(placement: .primaryAction) {
                     Button {
-                        dismiss()
+                        showingCustomFoodEditor = true
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: "pencil")
                             .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(CalorynTheme.sage)
                     }
-                    .accessibilityLabel("Close")
+                    .accessibilityLabel("Edit Custom Food")
                 }
-                if foodItem.isCustom {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button {
-                            showingCustomFoodEditor = true
-                        } label: {
-                            Image(systemName: "pencil")
-                                .font(.system(size: 16, weight: .medium))
-                                .foregroundStyle(CalorynTheme.sage)
-                        }
-                        .accessibilityLabel("Edit Custom Food")
-                    }
-                }
-            }
-            .sheet(isPresented: $showingCustomFoodEditor) {
-                CustomFoodFormView(
-                    existingFood: foodItem,
-                    onSaved: { _ in
-                        updatePortionFromDefaultServing()
-                    },
-                    allowsDeletion: false
-                )
-            }
-            .safeAreaInset(edge: .bottom) {
-                Button(action: logFood) {
-                    Text("Log Food")
-                        .font(.system(.headline, design: .rounded))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                }
-                .buttonStyle(.glassProminent)
-                .tint(CalorynTheme.sage)
-                .padding(.horizontal, CalorynTheme.pagePadding)
-                .padding(.bottom, 16)
             }
         }
-        .presentationDetents([.large])
+        .sheet(isPresented: $showingCustomFoodEditor) {
+            CustomFoodFormView(
+                existingFood: foodItem,
+                onSaved: { _ in
+                    updatePortionFromDefaultServing()
+                },
+                allowsDeletion: false
+            )
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button(action: logFood) {
+                Text("Log Food")
+                    .font(.system(.headline, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(CalorynTheme.sage)
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.bottom, 16)
+        }
     }
 
     @AppStorage("showNutriscore") private var showNutriscore = true
@@ -350,8 +336,11 @@ struct PortionPickerView: View {
             snackIndex: selectedMeal == .snack ? snackIndex : 0
         )
         modelContext.insert(entry)
-        onLogged?()
-        dismiss()
+        if let onLogged {
+            onLogged()
+        } else {
+            dismiss()
+        }
     }
 
     private func updatePortionFromDefaultServing() {
@@ -372,12 +361,14 @@ struct PortionPickerView: View {
         defaultServingG: 170,
         servingDescription: "1 cup (170g)"
     )
-    return PortionPickerView(
-        foodItem: food,
-        mealType: .lunch,
-        logDate: .now,
-        isNewFood: true
-    )
+    return NavigationStack {
+        PortionPickerView(
+            foodItem: food,
+            mealType: .lunch,
+            logDate: .now,
+            isNewFood: true
+        )
+    }
     .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
 }
 
