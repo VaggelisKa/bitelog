@@ -90,7 +90,12 @@ struct FoodSearchView: View {
                 ) { dismiss() }
             }
             .sheet(isPresented: $showingCustomFoodForm) {
-                CustomFoodFormView()
+                CustomFoodFormView(onSaved: { food in
+                    showingCustomFoodForm = false
+                    Task { @MainActor in
+                        selectedFoodItem = food
+                    }
+                })
             }
             .sheet(item: $editingCustomFood) { food in
                 CustomFoodFormView(existingFood: food)

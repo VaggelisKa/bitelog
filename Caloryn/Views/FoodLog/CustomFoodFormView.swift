@@ -28,28 +28,34 @@ struct CustomFoodFormView: View {
 
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
-        && (Double(caloriesPerServing) ?? -1) >= 0
+        && (parseDecimal(caloriesPerServing) ?? -1) >= 0
         && !caloriesPerServing.isEmpty
     }
 
     private var servingGrams: Double {
-        Double(servingSizeGrams) ?? 100
+        parseDecimal(servingSizeGrams) ?? 100
     }
 
     private var previewCalories: Double {
-        Double(caloriesPerServing) ?? 0
+        parseDecimal(caloriesPerServing) ?? 0
     }
 
     private var previewProtein: Double {
-        Double(proteinPerServing) ?? 0
+        parseDecimal(proteinPerServing) ?? 0
     }
 
     private var previewCarbs: Double {
-        Double(carbsPerServing) ?? 0
+        parseDecimal(carbsPerServing) ?? 0
     }
 
     private var previewFat: Double {
-        Double(fatPerServing) ?? 0
+        parseDecimal(fatPerServing) ?? 0
+    }
+
+    /// Parses decimal strings, supporting both "." and "," as decimal separators (locale-agnostic).
+    private func parseDecimal(_ string: String) -> Double? {
+        let normalized = string.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+        return Double(normalized)
     }
 
     init(existingFood: FoodItem? = nil, onSaved: ((FoodItem) -> Void)? = nil, allowsDeletion: Bool = true) {
@@ -275,20 +281,17 @@ struct CustomFoodFormView: View {
         let serving = food.defaultServingG ?? 100
         servingSizeGrams = "\(Int(serving))"
         caloriesPerServing = "\(Int(food.calories(forGrams: serving)))"
-        let protein = food.protein(forGrams: serving)
-        let carbs = food.carbs(forGrams: serving)
-        let fat = food.fat(forGrams: serving)
-        if protein > 0 { proteinPerServing = String(format: "%.1f", protein) }
-        if carbs > 0 { carbsPerServing = String(format: "%.1f", carbs) }
-        if fat > 0 { fatPerServing = String(format: "%.1f", fat) }
+        proteinPerServing = String(format: "%.1f", food.protein(forGrams: serving))
+        carbsPerServing = String(format: "%.1f", food.carbs(forGrams: serving))
+        fatPerServing = String(format: "%.1f", food.fat(forGrams: serving))
     }
 
     private func saveFood() {
         let serving = servingGrams > 0 ? servingGrams : 100
-        let cal = Double(caloriesPerServing) ?? 0
-        let pro = Double(proteinPerServing) ?? 0
-        let carb = Double(carbsPerServing) ?? 0
-        let f = Double(fatPerServing) ?? 0
+        let cal = parseDecimal(caloriesPerServing) ?? 0
+        let pro = parseDecimal(proteinPerServing) ?? 0
+        let carb = parseDecimal(carbsPerServing) ?? 0
+        let f = parseDecimal(fatPerServing) ?? 0
 
         let calPer100 = cal / serving * 100
         let proPer100 = pro / serving * 100
@@ -304,6 +307,7 @@ struct CustomFoodFormView: View {
             food.fatPer100g = fPer100
             food.defaultServingG = serving
             food.servingDescription = "1 serving"
+            try? modelContext.save()
             onSaved?(food)
         } else {
             let food = FoodItem(
@@ -318,6 +322,7 @@ struct CustomFoodFormView: View {
                 isCustom: true
             )
             modelContext.insert(food)
+            try? modelContext.save()
             onSaved?(food)
         }
         dismiss()
