@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 struct MealSectionView: View {
@@ -29,6 +30,14 @@ struct MealSectionView: View {
         entries.reduce(0) { $0 + $1.proteinG }
     }
 
+    private var totalCarbs: Double {
+        entries.reduce(0) { $0 + $1.carbsG }
+    }
+
+    private var totalFat: Double {
+        entries.reduce(0) { $0 + $1.fatG }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Button(action: onAdd) {
@@ -50,10 +59,24 @@ struct MealSectionView: View {
                                 .foregroundStyle(CalorynTheme.textSecondary)
                         }
 
-                        if !entries.isEmpty, !totalProtein.isZero {
-                            Text("\(totalProtein.macroFormatted) protein")
-                                .font(CalorynTheme.numericCaption)
-                                .foregroundStyle(CalorynTheme.proteinColor)
+                        if !entries.isEmpty {
+                            HStack(spacing: 6) {
+                                if !totalProtein.isZero {
+                                    Text("\(totalProtein.macroFormatted) P")
+                                        .font(CalorynTheme.numericCaption)
+                                        .foregroundStyle(CalorynTheme.proteinColor)
+                                }
+                                if !totalCarbs.isZero {
+                                    Text("\(totalCarbs.macroFormatted) C")
+                                        .font(CalorynTheme.numericCaption)
+                                        .foregroundStyle(CalorynTheme.carbColor)
+                                }
+                                if !totalFat.isZero {
+                                    Text("\(totalFat.macroFormatted) F")
+                                        .font(CalorynTheme.numericCaption)
+                                        .foregroundStyle(CalorynTheme.fatColor)
+                                }
+                            }
                         }
                     }
 
@@ -161,4 +184,90 @@ private struct MealEntryRow: View {
         }
         .padding(.vertical, 4)
     }
+}
+
+#Preview("With entries") {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, configurations: config)
+    let context = ModelContext(container)
+
+    let oatmeal = FoodItem(name: "Oatmeal", caloriesPer100g: 389, proteinPer100g: 16.9, carbsPer100g: 66.3, fatPer100g: 6.9)
+    let apple = FoodItem(name: "Apple", caloriesPer100g: 52, proteinPer100g: 0.3, carbsPer100g: 14, fatPer100g: 0.2, nutriscoreGrade: "a")
+    [oatmeal, apple].forEach { context.insert($0) }
+
+    let entries = [
+        FoodLogEntry(date: .now, mealType: .breakfast, foodItem: oatmeal, portionGrams: 80),
+        FoodLogEntry(date: .now, mealType: .breakfast, foodItem: apple, portionGrams: 120),
+    ]
+    entries.forEach { context.insert($0) }
+    try? context.save()
+
+    return MealSectionView(
+        mealType: .breakfast,
+        entries: entries,
+        onAdd: {},
+        onDelete: { _ in }
+    )
+    .padding()
+}
+
+#Preview("Empty") {
+    MealSectionView(
+        mealType: .lunch,
+        entries: [],
+        onAdd: {},
+        onDelete: { _ in }
+    )
+    .padding()
+}
+
+#Preview("Snack") {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, configurations: config)
+    let context = ModelContext(container)
+
+    let yogurt = FoodItem(name: "Greek Yogurt", caloriesPer100g: 97, proteinPer100g: 9, carbsPer100g: 3.5, fatPer100g: 5)
+    context.insert(yogurt)
+
+    let entry = FoodLogEntry(date: .now, mealType: .snack, foodItem: yogurt, portionGrams: 150, snackIndex: 1)
+    context.insert(entry)
+    try? context.save()
+
+    return MealSectionView(
+        mealType: .snack,
+        entries: [entry],
+        snackIndex: 1,
+        onAdd: {},
+        onDelete: { _ in }
+    )
+    .padding()
+}
+
+#Preview("Snack with Nutriscore") {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, configurations: config)
+    let context = ModelContext(container)
+
+    let yogurt = FoodItem(
+        name: "Skyr Yogurt",
+        caloriesPer100g: 62,
+        proteinPer100g: 11,
+        carbsPer100g: 3.5,
+        fatPer100g: 0.2,
+        nutriscoreGrade: "a"
+    )
+    context.insert(yogurt)
+
+    let entry = FoodLogEntry(date: .now, mealType: .snack, foodItem: yogurt, portionGrams: 150, snackIndex: 1)
+    context.insert(entry)
+    try? context.save()
+
+    return MealSectionView(
+        mealType: .snack,
+        entries: [entry],
+        snackIndex: 1,
+        onAdd: {},
+        onDelete: { _ in }
+    )
+    .padding()
 }
