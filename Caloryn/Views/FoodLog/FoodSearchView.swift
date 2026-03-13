@@ -92,7 +92,7 @@ struct FoodSearchView: View {
             .sheet(isPresented: $showingCustomFoodForm) {
                 CustomFoodFormView(onSaved: { food in
                     showingCustomFoodForm = false
-                    DispatchQueue.main.async {
+                    Task { @MainActor in
                         selectedFoodItem = food
                     }
                 })
