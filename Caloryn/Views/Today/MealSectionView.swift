@@ -159,11 +159,11 @@ private struct MealEntryRow: View {
                     }
                 }
 
-                if !entry.proteinG.isZero {
-                    Text("\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.textSecondary)
-                }
+                Text(entry.proteinG.isZero
+                     ? "\(Int(entry.portionGrams))g"
+                     : "\(Int(entry.portionGrams))g · \(entry.proteinG.macroFormatted) protein")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
             }
 
             Spacer()
