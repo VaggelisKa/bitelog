@@ -65,13 +65,13 @@ struct TodayView: View {
     private func entries(for meal: MealType) -> [FoodLogEntry] {
         todayEntries
             .filter { $0.mealType == meal }
-            .sorted { $0.date < $1.date }
+            .sorted { $0.createdAt < $1.createdAt }
     }
 
     private func snackEntries(for index: Int) -> [FoodLogEntry] {
         todayEntries
             .filter { $0.mealType == .snack && $0.snackIndex == index }
-            .sorted { $0.date < $1.date }
+            .sorted { $0.createdAt < $1.createdAt }
     }
 
     var body: some View {

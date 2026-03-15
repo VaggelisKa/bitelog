@@ -310,6 +310,12 @@ struct GoalEditView: View {
         .onAppear {
             targetText = "\(profile.dailyCalorieTarget)"
             calorieDeficit = profile.calorieDeficit
+            let cal = Double(profile.dailyCalorieTarget)
+            if cal > 0 {
+                proteinRatio = (profile.proteinTargetG * 4.0) / cal
+                carbRatio = (profile.carbTargetG * 4.0) / cal
+                fatRatio = (profile.fatTargetG * 9.0) / cal
+            }
         }
     }
 }

@@ -17,6 +17,7 @@ final class FoodLogEntry {
     var fatG: Double = 0
 
     var foodName: String = ""
+    var createdAt: Date = Date()
 
     init(
         date: Date,
@@ -36,5 +37,6 @@ final class FoodLogEntry {
         self.carbsG = foodItem.carbs(forGrams: portionGrams)
         self.fatG = foodItem.fat(forGrams: portionGrams)
         self.foodName = foodItem.name
+        self.createdAt = Date()
     }
 }
