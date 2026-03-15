@@ -78,6 +78,7 @@ struct MacroRatioStepView: View {
             }
             .buttonStyle(.glassProminent)
             .tint(CalorynTheme.sage)
+            .disabled(!isValid)
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 16)
         }

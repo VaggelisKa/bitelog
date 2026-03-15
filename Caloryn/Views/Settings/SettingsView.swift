@@ -203,6 +203,9 @@ struct GoalEditView: View {
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
 
+    private var macroTotal: Double { proteinRatio + carbRatio + fatRatio }
+    private var isMacroValid: Bool { abs(macroTotal - 1.0) <= 0.01 }
+
     private var calculatedTarget: Int {
         NutritionCalculator.defaultTarget(tdee: profile.tdee, deficit: calorieDeficit)
     }
@@ -301,6 +304,7 @@ struct GoalEditView: View {
                     dismiss()
                 }
                 .fontWeight(.semibold)
+                .disabled(!isMacroValid)
             }
         }
         .onAppear {
