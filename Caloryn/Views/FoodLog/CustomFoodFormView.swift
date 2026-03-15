@@ -306,7 +306,7 @@ struct CustomFoodFormView: View {
             food.carbsPer100g = carbPer100
             food.fatPer100g = fPer100
             food.defaultServingG = serving
-            food.servingDescription = "1 serving"
+            food.servingDescription = nil
             try? modelContext.save()
             onSaved?(food)
         } else {
@@ -318,7 +318,6 @@ struct CustomFoodFormView: View {
                 carbsPer100g: carbPer100,
                 fatPer100g: fPer100,
                 defaultServingG: serving,
-                servingDescription: "1 serving",
                 isCustom: true
             )
             modelContext.insert(food)

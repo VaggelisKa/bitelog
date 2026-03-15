@@ -185,7 +185,7 @@ struct WeeklyAverageCard: View {
             }
         }
         .chartYScale(domain: 0 ... (maxCalories * 1.15))
-        .chartXScale(domain: dailyData.first!.date ... dailyData.last!.date)
+        .chartXScale(domain: (dailyData.first?.date ?? .now) ... (dailyData.last?.date ?? .now))
         .frame(height: 160)
     }
 }
