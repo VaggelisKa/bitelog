@@ -66,7 +66,7 @@ struct CalorieRingView: View {
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .contentTransition(.numericText())
 
-                    Text("of \(target) kcal")
+                    Text("remaining")
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
