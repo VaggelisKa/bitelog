@@ -74,6 +74,7 @@ struct CalorieRingView: View {
                 Text("\(consumedDisplay) eaten")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(isOver ? CalorynTheme.terracotta.opacity(0.7) : CalorynTheme.textSecondary.opacity(0.75))
+                    .padding(.top, 6)
             }
         }
         .frame(width: ringSize, height: ringSize)
