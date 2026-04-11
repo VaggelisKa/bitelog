@@ -50,28 +50,30 @@ struct CalorieRingView: View {
                 .rotationEffect(.degrees(-90))
                 .opacity(animatedRingProgress < 0.01 ? 0 : 1)
 
-            VStack(spacing: 4) {
-                Text("\(consumedDisplay)")
-                    .font(.system(size: numberSize, weight: .bold, design: .rounded))
-                    .foregroundStyle(isOver ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
-                    .contentTransition(.numericText())
+            VStack(spacing: 2) {
+                if isOver {
+                    Text("\(overAmount)")
+                        .font(.system(size: numberSize, weight: .bold, design: .rounded))
+                        .foregroundStyle(CalorynTheme.terracotta)
+                        .contentTransition(.numericText())
 
-                Text("of \(target) kcal")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .multilineTextAlignment(.center)
+                    Text("over")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.terracotta.opacity(0.85))
+                } else {
+                    Text("\(remaining)")
+                        .font(.system(size: numberSize, weight: .bold, design: .rounded))
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                        .contentTransition(.numericText())
 
-                if !isOver, target > 0 {
-                    Text("\(remaining) kcal left")
+                    Text("of \(target) kcal")
                         .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.textSecondary.opacity(0.9))
-                        .multilineTextAlignment(.center)
-                } else if isOver {
-                    Text("\(overAmount) kcal over")
-                        .font(CalorynTheme.caption)
-                        .foregroundStyle(CalorynTheme.terracotta.opacity(0.9))
-                        .multilineTextAlignment(.center)
+                        .foregroundStyle(CalorynTheme.textSecondary)
                 }
+
+                Text("\(consumedDisplay) eaten")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(isOver ? CalorynTheme.terracotta.opacity(0.7) : CalorynTheme.textSecondary.opacity(0.75))
             }
         }
         .frame(width: ringSize, height: ringSize)
@@ -79,7 +81,7 @@ struct CalorieRingView: View {
         .glassCircle()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityValue("\(consumedDisplay) of \(target) calories consumed")
+        .accessibilityValue("\(consumedDisplay) eaten, \(remaining) remaining of \(target)")
         .onAppear {
             animatedRingProgress = displayedRingProgress
         }
@@ -92,9 +94,9 @@ struct CalorieRingView: View {
 
     private var accessibilityDescription: String {
         if isOver {
-            "Calorie ring, \(consumedDisplay) calories logged, \(overAmount) calories over a \(target) calorie goal"
+            "Calorie ring, \(consumedDisplay) eaten, \(overAmount) calories over a \(target) calorie goal"
         } else {
-            "Calorie ring, \(consumedDisplay) of \(target) calories logged, \(remaining) calories remaining"
+            "Calorie ring, \(remaining) remaining of \(target) calories, \(consumedDisplay) eaten"
         }
     }
 }
