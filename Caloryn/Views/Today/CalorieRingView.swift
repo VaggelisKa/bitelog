@@ -29,6 +29,10 @@ struct CalorieRingView: View {
         consumed > Double(target)
     }
 
+    private var consumedDisplay: Int {
+        Int(consumed.rounded(.towardZero))
+    }
+
     var body: some View {
         ZStack {
             Circle()
@@ -46,15 +50,28 @@ struct CalorieRingView: View {
                 .rotationEffect(.degrees(-90))
                 .opacity(animatedRingProgress < 0.01 ? 0 : 1)
 
-            VStack(spacing: 2) {
-                Text("\(isOver ? overAmount : remaining)")
+            VStack(spacing: 4) {
+                Text("\(consumedDisplay)")
                     .font(.system(size: numberSize, weight: .bold, design: .rounded))
                     .foregroundStyle(isOver ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
                     .contentTransition(.numericText())
 
-                Text(isOver ? "over" : "remaining")
+                Text("of \(target) kcal")
                     .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textSecondary)
+                    .multilineTextAlignment(.center)
+
+                if !isOver, target > 0 {
+                    Text("\(remaining) kcal left")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                } else if isOver {
+                    Text("\(overAmount) kcal over")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.terracotta.opacity(0.9))
+                        .multilineTextAlignment(.center)
+                }
             }
         }
         .frame(width: ringSize, height: ringSize)
@@ -62,7 +79,7 @@ struct CalorieRingView: View {
         .glassCircle()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityValue("\(Int(consumed)) of \(target) calories consumed")
+        .accessibilityValue("\(consumedDisplay) of \(target) calories consumed")
         .onAppear {
             animatedRingProgress = displayedRingProgress
         }
@@ -75,16 +92,17 @@ struct CalorieRingView: View {
 
     private var accessibilityDescription: String {
         if isOver {
-            "Calorie ring, over target by \(Int(consumed) - target) calories"
+            "Calorie ring, \(consumedDisplay) calories logged, \(overAmount) calories over a \(target) calorie goal"
         } else {
-            "Calorie ring, \(remaining) calories remaining"
+            "Calorie ring, \(consumedDisplay) of \(target) calories logged, \(remaining) calories remaining"
         }
     }
 }
 
 #Preview {
     VStack(spacing: 30) {
-        CalorieRingView(consumed: 1200, target: 2000, ringSize: 180)
-        CalorieRingView(consumed: 2200, target: 2000, ringSize: 180)
+        CalorieRingView(consumed: 1200, target: 2000, ringSize: 200)
+        CalorieRingView(consumed: 2200, target: 2000, ringSize: 200)
+        CalorieRingView(consumed: 0, target: 2000, ringSize: 200)
     }
 }
