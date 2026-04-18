@@ -146,7 +146,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Version", value: "1.0.0")
+            LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
 
             Link(destination: URL(string: "https://caloryn.app/privacy")!) {
                 HStack {
@@ -224,6 +224,11 @@ struct GoalEditView: View {
             Section("Daily Calorie Target") {
                 Toggle("Manual Override", isOn: $profile.manualOverride)
                     .tint(CalorynTheme.sage)
+                    .onChange(of: profile.manualOverride) { _, isManual in
+                        if isManual {
+                            targetText = "\(calculatedTarget)"
+                        }
+                    }
 
                 if profile.manualOverride {
                     HStack {
