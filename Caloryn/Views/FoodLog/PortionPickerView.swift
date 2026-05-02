@@ -283,7 +283,7 @@ struct PortionPickerView: View {
             mealType: selectedMeal,
             foodItem: food,
             portionGrams: portionGrams,
-            snackIndex: selectedMeal == .snack ? snackIndex : 0
+            snackIndex: selectedMeal == .snack ? max(1, snackIndex) : 0
         )
         modelContext.insert(entry)
         if let onLogged {
