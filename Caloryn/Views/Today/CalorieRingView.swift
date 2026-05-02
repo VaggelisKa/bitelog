@@ -82,7 +82,11 @@ struct CalorieRingView: View {
         .glassCircle()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityValue("\(consumedDisplay) eaten, \(remaining) remaining of \(target)")
+        .accessibilityValue(
+            isOver
+                ? "\(consumedDisplay) eaten, \(overAmount) calories over target of \(target)"
+                : "\(consumedDisplay) eaten, \(remaining) remaining of \(target)"
+        )
         .onAppear {
             animatedRingProgress = displayedRingProgress
         }

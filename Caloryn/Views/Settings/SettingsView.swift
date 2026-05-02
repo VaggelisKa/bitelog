@@ -146,7 +146,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Version", value: "1.0.0")
+            LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")
 
             Link(destination: URL(string: "https://caloryn.app/privacy")!) {
                 HStack {
@@ -315,6 +315,11 @@ struct GoalEditView: View {
                 proteinRatio = (profile.proteinTargetG * 4.0) / cal
                 carbRatio = (profile.carbTargetG * 4.0) / cal
                 fatRatio = (profile.fatTargetG * 9.0) / cal
+            }
+        }
+        .onChange(of: profile.manualOverride) {
+            if profile.manualOverride {
+                targetText = "\(calculatedTarget)"
             }
         }
     }
