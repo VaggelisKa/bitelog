@@ -6,11 +6,11 @@ extension Date {
     }
 
     var yesterday: Date {
-        Calendar.current.date(byAdding: .day, value: -1, to: self)!
+        Calendar.current.date(byAdding: .day, value: -1, to: self) ?? self
     }
 
     var tomorrow: Date {
-        Calendar.current.date(byAdding: .day, value: 1, to: self)!
+        Calendar.current.date(byAdding: .day, value: 1, to: self) ?? self
     }
 
     var isToday: Bool {
@@ -50,7 +50,7 @@ extension Date {
         var cal = Calendar.current
         cal.firstWeekday = 2 // Monday
         let components = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: self)
-        return cal.date(from: components)!.startOfDay
+        return (cal.date(from: components) ?? self).startOfDay
     }
 
     static func datesForCurrentWeek() -> [Date] {

@@ -177,7 +177,9 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
     let lang: String?
     let countriesTags: [String]?
 
-    var id: String { code ?? UUID().uuidString }
+    /// Stable identity stored once at decode time so ForEach/navigation never sees a shifting id.
+    private let stableId: String
+    var id: String { stableId }
 
     /// Parses grams from quantity strings like "350g", "50 g", "1 oz (28 g)".
     private var quantityGrams: Double? {
@@ -240,7 +242,9 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        code = try container.decodeIfPresent(String.self, forKey: .code)
+        let decodedCode = try container.decodeIfPresent(String.self, forKey: .code)
+        code = decodedCode
+        stableId = decodedCode ?? UUID().uuidString
         productName = try container.decodeIfPresent(String.self, forKey: .productName)
         servingSize = try container.decodeIfPresent(String.self, forKey: .servingSize)
         quantity = try container.decodeIfPresent(String.self, forKey: .quantity)
