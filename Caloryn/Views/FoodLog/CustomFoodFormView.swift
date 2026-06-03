@@ -338,7 +338,7 @@ struct CustomFoodFormView: View {
 #Preview {
     CustomFoodFormView()
         .modelContainer(
-            for: [UserProfile.self, FoodItem.self, FoodLogEntry.self],
+            for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self],
             inMemory: true
         )
 }
