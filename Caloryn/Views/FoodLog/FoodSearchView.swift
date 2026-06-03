@@ -2,10 +2,30 @@ import SwiftUI
 import SwiftData
 import UIKit
 
+enum FoodSearchMode {
+    case logging
+    case ingredientSelection((FoodItem) -> Void)
+
+    var title: String {
+        switch self {
+        case .logging: "Add Food"
+        case .ingredientSelection: "Add Ingredient"
+        }
+    }
+
+    var isIngredientSelection: Bool {
+        switch self {
+        case .logging: false
+        case .ingredientSelection: true
+        }
+    }
+}
+
 struct FoodSearchView: View {
     let mealType: MealType
     let logDate: Date
     var snackIndex: Int = 0
+    var mode: FoodSearchMode = .logging
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -17,7 +37,9 @@ struct FoodSearchView: View {
     @State private var selectedFoodItem: FoodItem?
     @State private var showingScanner = false
     @State private var showingCustomFoodForm = false
+    @State private var showingRecipeForm = false
     @State private var editingCustomFood: FoodItem?
+    @State private var editingRecipe: FoodItem?
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError: String?
     @FocusState private var isSearchFocused: Bool
@@ -26,12 +48,17 @@ struct FoodSearchView: View {
         searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
+    private var recipes: [FoodItem] {
+        guard !mode.isIngredientSelection else { return [] }
+        return recentFoods.filter { $0.isRecipe }
+    }
+
     private var customFoods: [FoodItem] {
-        recentFoods.filter { $0.isCustom }
+        recentFoods.filter { $0.isCustom && !$0.isRecipe }
     }
 
     private var displayedRecentFoods: [FoodItem] {
-        Array(recentFoods.filter { !$0.isCustom }.prefix(20))
+        Array(recentFoods.filter { !$0.isCustom && !$0.isRecipe }.prefix(20))
     }
 
     var body: some View {
@@ -47,7 +74,7 @@ struct FoodSearchView: View {
                     searchResultsList
                 }
             }
-            .navigationTitle("Add Food")
+            .navigationTitle(mode.title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -60,14 +87,26 @@ struct FoodSearchView: View {
                     .accessibilityLabel("Close")
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingCustomFoodForm = true
+                    Menu {
+                        Button {
+                            showingCustomFoodForm = true
+                        } label: {
+                            Label("Create Manual Entry", systemImage: "plus")
+                        }
+
+                        if !mode.isIngredientSelection {
+                            Button {
+                                showingRecipeForm = true
+                            } label: {
+                                Label("Create Recipe", systemImage: "list.bullet.rectangle")
+                            }
+                        }
                     } label: {
                         Image(systemName: "plus")
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(CalorynTheme.sage)
                     }
-                    .accessibilityLabel("Create Custom Food")
+                    .accessibilityLabel("Create")
                 }
             }
             .navigationDestination(item: $selectedProduct) { product in
@@ -93,12 +132,24 @@ struct FoodSearchView: View {
                 CustomFoodFormView(onSaved: { food in
                     showingCustomFoodForm = false
                     Task { @MainActor in
-                        selectedFoodItem = food
+                        handleFoodItemSelection(food)
+                    }
+                })
+            }
+            .sheet(isPresented: $showingRecipeForm) {
+                RecipeFormView(onSaved: { _ in
+                    showingRecipeForm = false
+                    Task { @MainActor in
+                        searchText = ""
+                        searchService.clearResults()
                     }
                 })
             }
             .sheet(item: $editingCustomFood) { food in
                 CustomFoodFormView(existingFood: food)
+            }
+            .sheet(item: $editingRecipe) { recipe in
+                RecipeFormView(existingRecipe: recipe)
             }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
@@ -155,14 +206,26 @@ struct FoodSearchView: View {
 
     private var recentFoodsList: some View {
         Group {
-            if displayedRecentFoods.isEmpty && customFoods.isEmpty {
+            if displayedRecentFoods.isEmpty && customFoods.isEmpty && recipes.isEmpty {
                 ContentUnavailableView(
                     "No Recent Foods",
                     systemImage: "clock",
-                    description: Text("Search above or tap + to create a custom food.")
+                    description: Text("Search above or tap + to create a saved food.")
                 )
             } else {
                 List {
+                    if !recipes.isEmpty {
+                        Section {
+                            ForEach(recipes) { food in
+                                recipeRow(for: food)
+                            }
+                        } header: {
+                            Text("Recipes")
+                                .font(CalorynTheme.caption)
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                        }
+                    }
+
                     if !customFoods.isEmpty {
                         Section {
                             ForEach(customFoods) { food in
@@ -187,7 +250,7 @@ struct FoodSearchView: View {
                                 )
                                 .contentShape(Rectangle())
                                 .onTapGesture {
-                                    selectedFoodItem = food
+                                    handleFoodItemSelection(food)
                                 }
                             }
                         } header: {
@@ -211,18 +274,26 @@ struct FoodSearchView: View {
         }
     }
 
+    private var matchingRecipes: [FoodItem] {
+        let query = searchText.lowercased().trimmingCharacters(in: .whitespaces)
+        guard !query.isEmpty else { return [] }
+        return recipes.filter {
+            $0.name.lowercased().contains(query)
+        }
+    }
+
     private var searchResultsList: some View {
         Group {
-            if searchService.isSearching && matchingCustomFoods.isEmpty {
+            if searchService.isSearching && matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = searchService.errorMessage, matchingCustomFoods.isEmpty {
+            } else if let error = searchService.errorMessage, matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
                 ContentUnavailableView(
                     "Search Error",
                     systemImage: "wifi.exclamationmark",
                     description: Text(error)
                 )
-            } else if searchService.searchResults.isEmpty && matchingCustomFoods.isEmpty {
+            } else if searchService.searchResults.isEmpty && matchingCustomFoods.isEmpty && matchingRecipes.isEmpty {
                 ContentUnavailableView(
                     "No Results",
                     systemImage: "magnifyingglass",
@@ -230,6 +301,18 @@ struct FoodSearchView: View {
                 )
             } else {
                 List {
+                    if !matchingRecipes.isEmpty {
+                        Section {
+                            ForEach(matchingRecipes) { food in
+                                recipeRow(for: food)
+                            }
+                        } header: {
+                            Text("Recipes")
+                                .font(CalorynTheme.caption)
+                                .foregroundStyle(CalorynTheme.textSecondary)
+                        }
+                    }
+
                     if !matchingCustomFoods.isEmpty {
                         Section {
                             ForEach(matchingCustomFoods) { food in
@@ -255,11 +338,11 @@ struct FoodSearchView: View {
                                 )
                                 .contentShape(Rectangle())
                                 .onTapGesture {
-                                    selectedProduct = product
+                                    handleProductSelection(product)
                                 }
                             }
                         } header: {
-                            if !matchingCustomFoods.isEmpty {
+                            if !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty {
                                 Text("Search Results")
                                     .font(CalorynTheme.caption)
                                     .foregroundStyle(CalorynTheme.textSecondary)
@@ -288,11 +371,12 @@ struct FoodSearchView: View {
             caloriesPer100g: food.caloriesPer100g,
             nutriscoreGrade: food.nutriscoreGrade,
             servingDescription: food.servingDescription,
-            isCustom: true
+            isCustom: true,
+            showsTypeBadge: false
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            selectedFoodItem = food
+            handleFoodItemSelection(food)
         }
         .swipeActions(edge: .trailing) {
             Button(role: .destructive) {
@@ -302,6 +386,33 @@ struct FoodSearchView: View {
             }
             Button {
                 editingCustomFood = food
+            } label: {
+                Label("Edit", systemImage: "pencil")
+            }
+            .tint(CalorynTheme.sage)
+        }
+    }
+
+    private func recipeRow(for food: FoodItem) -> some View {
+        FoodRowView(
+            name: food.name,
+            brand: food.brand,
+            caloriesPer100g: food.caloriesPer100g,
+            isRecipe: true,
+            showsTypeBadge: false
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            handleFoodItemSelection(food)
+        }
+        .swipeActions(edge: .trailing) {
+            Button(role: .destructive) {
+                modelContext.delete(food)
+            } label: {
+                Label("Delete", systemImage: "trash")
+            }
+            Button {
+                editingRecipe = food
             } label: {
                 Label("Edit", systemImage: "pencil")
             }
@@ -376,7 +487,7 @@ struct FoodSearchView: View {
             do {
                 let product = try await searchService.lookupBarcode(code)
                 isLookingUpBarcode = false
-                selectedProduct = product
+                handleProductSelection(product)
             } catch is BarcodeLookupError {
                 isLookingUpBarcode = false
                 barcodeLookupError = "No results found\nfor this barcode."
@@ -395,9 +506,30 @@ struct FoodSearchView: View {
         generator.notificationOccurred(type)
     }
 
+    private func handleProductSelection(_ product: OpenFoodFactsProduct) {
+        switch mode {
+        case .logging:
+            selectedProduct = product
+        case .ingredientSelection(let handler):
+            let food = searchService.createFoodItem(from: product)
+            handler(food)
+            dismiss()
+        }
+    }
+
+    private func handleFoodItemSelection(_ food: FoodItem) {
+        switch mode {
+        case .logging:
+            selectedFoodItem = food
+        case .ingredientSelection(let handler):
+            handler(food)
+            dismiss()
+        }
+    }
+
 }
 
 #Preview {
     FoodSearchView(mealType: .breakfast, logDate: .now)
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
 }

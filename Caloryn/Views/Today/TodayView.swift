@@ -251,5 +251,5 @@ struct TodayView: View {
 
 #Preview {
     TodayView()
-        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self], inMemory: true)
+        .modelContainer(for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self], inMemory: true)
 }

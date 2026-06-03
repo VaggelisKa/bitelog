@@ -8,10 +8,14 @@ struct FoodRowView: View {
     var servingDescription: String? = nil
     var caloriesPerServing: Double? = nil
     var isCustom: Bool = false
+    var isRecipe: Bool = false
+    var showsTypeBadge: Bool = true
 
     @AppStorage("showNutriscore") private var showNutriscore = true
 
     private var subtitle: String? {
+        guard !isRecipe else { return nil }
+
         var parts: [String] = []
         if let brand, !brand.isEmpty {
             parts.append(brand)
@@ -31,8 +35,8 @@ struct FoodRowView: View {
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .lineLimit(1)
 
-                    if isCustom {
-                        Text("CUSTOM")
+                    if showsTypeBadge && (isCustom || isRecipe) {
+                        Text(isRecipe ? "RECIPE" : "CUSTOM")
                             .font(.system(size: 9, weight: .bold, design: .rounded))
                             .foregroundStyle(CalorynTheme.sage)
                             .padding(.horizontal, 5)
@@ -85,5 +89,6 @@ struct FoodRowView: View {
         FoodRowView(name: "Skyr", brand: "Arla", caloriesPer100g: 63, servingDescription: "170g")
         FoodRowView(name: "Chicken Breast", brand: nil, caloriesPer100g: 165)
         FoodRowView(name: "Nick's Pizza", brand: "Homemade", caloriesPer100g: 267, isCustom: true)
+        FoodRowView(name: "Greek Salad", brand: nil, caloriesPer100g: 72, isRecipe: true)
     }
 }
