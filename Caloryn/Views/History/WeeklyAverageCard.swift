@@ -76,11 +76,16 @@ struct WeeklyAverageCard: View {
 
     // MARK: - Compact average summary
 
+    private var averageUnit: String {
+        guard daysWithData > 0, daysWithData < 7 else { return "kcal/day" }
+        return "kcal/day · \(daysWithData)/7 logged"
+    }
+
     private var averageSummary: some View {
         HStack(alignment: .top, spacing: 0) {
             statColumn(
                 value: average > 0 ? "\(Int(average))" : "—",
-                unit: "kcal/day",
+                unit: averageUnit,
                 detail: differenceLabel,
                 detailColor: differenceColor
             )

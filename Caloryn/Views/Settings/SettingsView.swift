@@ -170,7 +170,7 @@ struct SettingsView: View {
     }
 
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.6.0"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.6.1"
     }
 }
 
@@ -367,7 +367,11 @@ struct ProfileEditView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
-                    profile.recalculate()
+                    let cal = Double(profile.dailyCalorieTarget)
+                    let proteinRatio = cal > 0 ? (profile.proteinTargetG * 4.0) / cal : 0.30
+                    let carbRatio    = cal > 0 ? (profile.carbTargetG    * 4.0) / cal : 0.40
+                    let fatRatio     = cal > 0 ? (profile.fatTargetG     * 9.0) / cal : 0.30
+                    profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     dismiss()
                 }
                 .fontWeight(.semibold)

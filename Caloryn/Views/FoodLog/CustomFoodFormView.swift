@@ -237,7 +237,7 @@ struct CustomFoodFormView: View {
 
                 TextField("100", text: $servingSizeGrams)
                     .font(CalorynTheme.numericBody)
-                    .keyboardType(.numberPad)
+                    .keyboardType(.decimalPad)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 80)
                     .focused($focusedField, equals: .servingSize)

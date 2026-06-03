@@ -61,7 +61,7 @@ struct FoodRowView: View {
 
             if let srvCal = caloriesPerServing {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(Int(srvCal))")
+                    Text("\(Int(srvCal.rounded()))")
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textPrimary)
                     Text("kcal/srv")
@@ -70,7 +70,7 @@ struct FoodRowView: View {
                 }
             } else {
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text("\(Int(caloriesPer100g))")
+                    Text("\(Int(caloriesPer100g.rounded()))")
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textPrimary)
                     Text("kcal/100g")

@@ -84,8 +84,13 @@ struct MacroRatioStepView: View {
         }
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Skip", action: onComplete)
-                    .foregroundStyle(CalorynTheme.textSecondary)
+                Button("Skip") {
+                    proteinRatio = 0.30
+                    carbRatio    = 0.40
+                    fatRatio     = 0.30
+                    onComplete()
+                }
+                .foregroundStyle(CalorynTheme.textSecondary)
             }
         }
     }
