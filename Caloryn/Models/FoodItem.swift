@@ -19,11 +19,15 @@ final class FoodItem {
     var servingDescription: String?
 
     var isCustom: Bool = false
+    var isRecipe: Bool = false
 
     var lastUsed: Date = Date()
 
     @Relationship(deleteRule: .cascade, inverse: \FoodLogEntry.foodItem)
     var logEntries: [FoodLogEntry]?
+
+    @Relationship(deleteRule: .cascade, inverse: \RecipeIngredient.recipe)
+    var recipeIngredients: [RecipeIngredient]?
 
     init(
         name: String,
@@ -36,7 +40,8 @@ final class FoodItem {
         defaultServingG: Double? = nil,
         servingDescription: String? = nil,
         nutriscoreGrade: String? = nil,
-        isCustom: Bool = false
+        isCustom: Bool = false,
+        isRecipe: Bool = false
     ) {
         self.id = UUID()
         self.name = name
@@ -50,6 +55,7 @@ final class FoodItem {
         self.servingDescription = servingDescription
         self.nutriscoreGrade = nutriscoreGrade
         self.isCustom = isCustom
+        self.isRecipe = isRecipe
         self.lastUsed = Date()
     }
 
@@ -67,6 +73,31 @@ final class FoodItem {
 
     func fat(forGrams grams: Double) -> Double {
         fatPer100g * grams / 100
+    }
+
+    func updateRecipeNutritionFromIngredients() {
+        let ingredients = recipeIngredients ?? []
+        let totalGrams = ingredients.reduce(0) { $0 + $1.portionGrams }
+
+        guard totalGrams > 0 else {
+            caloriesPer100g = 0
+            proteinPer100g = 0
+            carbsPer100g = 0
+            fatPer100g = 0
+            defaultServingG = nil
+            servingDescription = nil
+            return
+        }
+
+        caloriesPer100g = ingredients.reduce(0) { $0 + $1.calories } / totalGrams * 100
+        proteinPer100g = ingredients.reduce(0) { $0 + $1.proteinG } / totalGrams * 100
+        carbsPer100g = ingredients.reduce(0) { $0 + $1.carbsG } / totalGrams * 100
+        fatPer100g = ingredients.reduce(0) { $0 + $1.fatG } / totalGrams * 100
+        defaultServingG = totalGrams
+        servingDescription = nil
+        isRecipe = true
+        isCustom = false
+        nutriscoreGrade = nil
     }
 
     var servingInfo: ServingInfo? {

@@ -83,7 +83,7 @@ struct CustomFoodFormView: View {
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.bottom, 24)
             }
-            .navigationTitle(isEditing ? "Edit Custom Food" : "Create Custom Food")
+            .navigationTitle(isEditing ? "Edit Manual Entry" : "Create Manual Entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -104,10 +104,10 @@ struct CustomFoodFormView: View {
                 }
             }
             .onAppear(perform: populateFromExisting)
-            .confirmationDialog("Delete Custom Food", isPresented: $showingDeleteConfirmation) {
+            .confirmationDialog("Delete Manual Entry", isPresented: $showingDeleteConfirmation) {
                 Button("Delete", role: .destructive, action: deleteFood)
             } message: {
-                Text("This will permanently remove \"\(name)\" from your custom foods.")
+                Text("This will permanently remove \"\(name)\" from your manual entries.")
             }
         }
         .presentationDetents([.large])
@@ -260,7 +260,7 @@ struct CustomFoodFormView: View {
         } label: {
             HStack {
                 Image(systemName: "trash")
-                Text("Delete Custom Food")
+                Text("Delete Manual Entry")
             }
             .font(.system(.body, weight: .medium))
             .frame(maxWidth: .infinity)
@@ -338,7 +338,7 @@ struct CustomFoodFormView: View {
 #Preview {
     CustomFoodFormView()
         .modelContainer(
-            for: [UserProfile.self, FoodItem.self, FoodLogEntry.self],
+            for: [UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self],
             inMemory: true
         )
 }

@@ -188,7 +188,7 @@ private struct MealEntryRow: View {
 
 #Preview("With entries") {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, configurations: config)
+    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, configurations: config)
     let context = ModelContext(container)
 
     let oatmeal = FoodItem(name: "Oatmeal", caloriesPer100g: 389, proteinPer100g: 16.9, carbsPer100g: 66.3, fatPer100g: 6.9)
@@ -223,7 +223,7 @@ private struct MealEntryRow: View {
 
 #Preview("Snack") {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, configurations: config)
+    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, configurations: config)
     let context = ModelContext(container)
 
     let yogurt = FoodItem(name: "Greek Yogurt", caloriesPer100g: 97, proteinPer100g: 9, carbsPer100g: 3.5, fatPer100g: 5)
@@ -245,7 +245,7 @@ private struct MealEntryRow: View {
 
 #Preview("Snack with Nutriscore") {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, configurations: config)
+    let container = try! ModelContainer(for: FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, configurations: config)
     let context = ModelContext(container)
 
     let yogurt = FoodItem(

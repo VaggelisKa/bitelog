@@ -11,6 +11,7 @@ struct CalorynApp: App {
             UserProfile.self,
             FoodItem.self,
             FoodLogEntry.self,
+            RecipeIngredient.self,
         ])
         let config = ModelConfiguration(
             schema: schema,

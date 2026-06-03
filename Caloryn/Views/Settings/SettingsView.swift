@@ -146,7 +146,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Version", value: "1.0.0")
+            LabeledContent("Version", value: appVersion)
 
             Link(destination: URL(string: "https://caloryn.app/privacy")!) {
                 HStack {
@@ -168,11 +168,15 @@ struct SettingsView: View {
             Text("About")
         }
     }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.6.0"
+    }
 }
 
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: UserProfile.self, FoodItem.self, FoodLogEntry.self, configurations: config)
+    let container = try! ModelContainer(for: UserProfile.self, FoodItem.self, FoodLogEntry.self, RecipeIngredient.self, configurations: config)
     let context = ModelContext(container)
     let profile = UserProfile(age: 30, sex: .male, heightCm: 175, weightKg: 70, activityLevel: .moderatelyActive, dailyCalorieTarget: 2000)
     context.insert(profile)
