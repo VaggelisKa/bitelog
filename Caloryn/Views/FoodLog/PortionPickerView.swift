@@ -113,7 +113,7 @@ struct PortionPickerView: View {
                             .font(.system(size: 16, weight: .medium))
                             .foregroundStyle(CalorynTheme.sage)
                     }
-                    .accessibilityLabel(foodItem.isRecipe ? "Edit Recipe" : "Edit Custom Food")
+                    .accessibilityLabel(foodItem.isRecipe ? "Edit Recipe" : "Edit Manual Entry")
                 }
             }
         }

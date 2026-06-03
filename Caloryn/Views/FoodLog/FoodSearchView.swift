@@ -91,7 +91,7 @@ struct FoodSearchView: View {
                         Button {
                             showingCustomFoodForm = true
                         } label: {
-                            Label("Create Custom Food", systemImage: "plus")
+                            Label("Create Manual Entry", systemImage: "plus")
                         }
 
                         if !mode.isIngredientSelection {
