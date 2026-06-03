@@ -146,7 +146,7 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
-            LabeledContent("Version", value: "1.0.0")
+            LabeledContent("Version", value: appVersion)
 
             Link(destination: URL(string: "https://caloryn.app/privacy")!) {
                 HStack {
@@ -167,6 +167,10 @@ struct SettingsView: View {
         } header: {
             Text("About")
         }
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.6.0"
     }
 }
 
