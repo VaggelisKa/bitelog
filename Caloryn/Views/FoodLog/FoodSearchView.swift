@@ -137,10 +137,11 @@ struct FoodSearchView: View {
                 })
             }
             .sheet(isPresented: $showingRecipeForm) {
-                RecipeFormView(onSaved: { recipe in
+                RecipeFormView(onSaved: { _ in
                     showingRecipeForm = false
                     Task { @MainActor in
-                        handleFoodItemSelection(recipe)
+                        searchText = ""
+                        searchService.clearResults()
                     }
                 })
             }
@@ -217,7 +218,6 @@ struct FoodSearchView: View {
                         Section {
                             ForEach(recipes) { food in
                                 recipeRow(for: food)
-                                    .listRowSeparator(food.id == recipes.last?.id ? .hidden : .automatic, edges: .bottom)
                             }
                         } header: {
                             Text("Recipes")
@@ -230,7 +230,6 @@ struct FoodSearchView: View {
                         Section {
                             ForEach(customFoods) { food in
                                 customFoodRow(for: food)
-                                    .listRowSeparator(food.id == customFoods.last?.id ? .hidden : .automatic, edges: .bottom)
                             }
                         } header: {
                             Text("My Foods")
@@ -253,7 +252,6 @@ struct FoodSearchView: View {
                                 .onTapGesture {
                                     handleFoodItemSelection(food)
                                 }
-                                .listRowSeparator(food.id == displayedRecentFoods.last?.id ? .hidden : .automatic, edges: .bottom)
                             }
                         } header: {
                             Text("Recent")
@@ -307,7 +305,6 @@ struct FoodSearchView: View {
                         Section {
                             ForEach(matchingRecipes) { food in
                                 recipeRow(for: food)
-                                    .listRowSeparator(food.id == matchingRecipes.last?.id ? .hidden : .automatic, edges: .bottom)
                             }
                         } header: {
                             Text("Recipes")
@@ -320,7 +317,6 @@ struct FoodSearchView: View {
                         Section {
                             ForEach(matchingCustomFoods) { food in
                                 customFoodRow(for: food)
-                                    .listRowSeparator(food.id == matchingCustomFoods.last?.id ? .hidden : .automatic, edges: .bottom)
                             }
                         } header: {
                             Text("My Foods")
@@ -344,7 +340,6 @@ struct FoodSearchView: View {
                                 .onTapGesture {
                                     handleProductSelection(product)
                                 }
-                                .listRowSeparator(product == searchService.searchResults.last ? .hidden : .automatic, edges: .bottom)
                             }
                         } header: {
                             if !matchingCustomFoods.isEmpty || !matchingRecipes.isEmpty {
