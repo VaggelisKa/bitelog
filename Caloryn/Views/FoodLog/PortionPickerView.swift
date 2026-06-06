@@ -53,15 +53,15 @@ struct PortionPickerView: View {
         self.onLogged = onLogged
         self._selectedMeal = State(initialValue: mealType)
 
-        let defaultPortion = foodItem.isRecipe ? 100 : (foodItem.defaultServingG ?? 100)
+        let defaultPortion = foodItem.defaultServingG ?? 100
         self._portionGrams = State(initialValue: defaultPortion)
 
         let nearestStep = Self.normalizedGramStep(defaultPortion, limit: Self.gramOptionLimit(for: foodItem))
         self._selectedGramStep = State(initialValue: nearestStep)
 
         if foodItem.isRecipe {
-            self._portionMode = State(initialValue: .grams)
-            self._selectedRecipeServingID = State(initialValue: Self.nearestRecipeServingOptionID(for: defaultPortion, recipeTotalGrams: foodItem.defaultServingG ?? 100))
+            self._portionMode = State(initialValue: .recipeServing)
+            self._selectedRecipeServingID = State(initialValue: RecipeServingOption.one.id)
         } else if foodItem.servingInfo != nil {
             self._portionMode = State(initialValue: .serving)
             self._selectedServingCount = State(initialValue: 1)
@@ -363,13 +363,13 @@ struct PortionPickerView: View {
     }
 
     private func updatePortionFromDefaultServing() {
-        let defaultPortion = foodItem.isRecipe ? 100 : (foodItem.defaultServingG ?? 100)
+        let defaultPortion = foodItem.defaultServingG ?? 100
         portionGrams = defaultPortion
         selectedGramStep = Self.normalizedGramStep(defaultPortion, limit: Self.gramOptionLimit(for: foodItem))
-        selectedRecipeServingID = nearestRecipeServingOptionID(for: defaultPortion)
 
         if foodItem.isRecipe {
-            portionMode = .grams
+            portionMode = .recipeServing
+            selectedRecipeServingID = RecipeServingOption.one.id
         } else if let info = foodItem.servingInfo {
             portionMode = .serving
             let count = max(1, min(maxServingCount, Int(round(defaultPortion / info.gramsPerUnit))))

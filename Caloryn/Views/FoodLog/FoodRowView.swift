@@ -64,7 +64,7 @@ struct FoodRowView: View {
                     Text("\(Int(srvCal.rounded()))")
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textPrimary)
-                    Text("kcal/srv")
+                    Text(isRecipe ? "kcal total" : "kcal/srv")
                         .font(.system(.caption2, design: .rounded))
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
