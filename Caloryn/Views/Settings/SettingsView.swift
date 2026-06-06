@@ -170,7 +170,7 @@ struct SettingsView: View {
     }
 
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.6.2"
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "-"
     }
 }
 
@@ -228,6 +228,11 @@ struct GoalEditView: View {
             Section("Daily Calorie Target") {
                 Toggle("Manual Override", isOn: $profile.manualOverride)
                     .tint(CalorynTheme.sage)
+                    .onChange(of: profile.manualOverride) { _, isManual in
+                        if isManual {
+                            targetText = "\(calculatedTarget)"
+                        }
+                    }
 
                 if profile.manualOverride {
                     HStack {
