@@ -398,6 +398,7 @@ struct FoodSearchView: View {
             name: food.name,
             brand: food.brand,
             caloriesPer100g: food.caloriesPer100g,
+            caloriesPerServing: food.calories(forGrams: food.defaultServingG ?? 100),
             isRecipe: true,
             showsTypeBadge: false
         )
