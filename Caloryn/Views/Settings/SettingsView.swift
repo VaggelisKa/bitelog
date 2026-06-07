@@ -202,6 +202,7 @@ struct GoalEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var targetText: String = ""
+    @State private var manualOverride = false
     @State private var calorieDeficit: Double = 500
     @State private var proteinRatio: Double = 0.30
     @State private var carbRatio: Double = 0.40
@@ -209,6 +210,8 @@ struct GoalEditView: View {
 
     private var macroTotal: Double { proteinRatio + carbRatio + fatRatio }
     private var isMacroValid: Bool { abs(macroTotal - 1.0) <= 0.01 }
+    private var manualTarget: Int? { Int(targetText) }
+    private var isManualTargetValid: Bool { !manualOverride || (manualTarget ?? 0) >= 1000 }
 
     private var calculatedTarget: Int {
         NutritionCalculator.defaultTarget(tdee: profile.tdee, deficit: calorieDeficit)
@@ -226,23 +229,18 @@ struct GoalEditView: View {
     var body: some View {
         Form {
             Section("Daily Calorie Target") {
-                Toggle("Manual Override", isOn: $profile.manualOverride)
+                Toggle("Manual Override", isOn: $manualOverride)
                     .tint(CalorynTheme.sage)
-                    .onChange(of: profile.manualOverride) { _, isManual in
+                    .onChange(of: manualOverride) { _, isManual in
                         if isManual {
                             targetText = "\(calculatedTarget)"
                         }
                     }
 
-                if profile.manualOverride {
+                if manualOverride {
                     HStack {
                         TextField("Target", text: $targetText)
                             .keyboardType(.numberPad)
-                            .onChange(of: targetText) {
-                                if let val = Int(targetText), val >= 1000 {
-                                    profile.dailyCalorieTarget = val
-                                }
-                            }
                         Text("kcal")
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -252,7 +250,7 @@ struct GoalEditView: View {
                 }
             }
 
-            if !profile.manualOverride {
+            if !manualOverride {
                 Section {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
@@ -308,16 +306,21 @@ struct GoalEditView: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
+                    profile.manualOverride = manualOverride
                     profile.calorieDeficit = calorieDeficit
+                    if manualOverride, let manualTarget {
+                        profile.dailyCalorieTarget = manualTarget
+                    }
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
                     dismiss()
                 }
                 .fontWeight(.semibold)
-                .disabled(!isMacroValid)
+                .disabled(!isMacroValid || !isManualTargetValid)
             }
         }
         .onAppear {
             targetText = "\(profile.dailyCalorieTarget)"
+            manualOverride = profile.manualOverride
             calorieDeficit = profile.calorieDeficit
             let cal = Double(profile.dailyCalorieTarget)
             if cal > 0 {
