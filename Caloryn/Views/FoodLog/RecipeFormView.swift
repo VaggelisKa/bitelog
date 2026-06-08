@@ -43,6 +43,10 @@ struct RecipeFormView: View {
         ingredients.reduce(0) { $0 + $1.fatG }
     }
 
+    private var totalFiber: Double {
+        ingredients.reduce(0) { $0 + $1.fiberG }
+    }
+
     private var canSave: Bool {
         !name.trimmingCharacters(in: .whitespaces).isEmpty && totalGrams > 0 && !ingredients.isEmpty
     }
@@ -152,6 +156,7 @@ struct RecipeFormView: View {
                 summaryMetric("Protein", value: totalProtein, color: CalorynTheme.proteinColor)
                 summaryMetric("Carbs", value: totalCarbs, color: CalorynTheme.carbColor)
                 summaryMetric("Fat", value: totalFat, color: CalorynTheme.fatColor)
+                summaryMetric("Fiber", value: totalFiber, color: CalorynTheme.fiberColor)
             }
         }
         .frame(maxWidth: .infinity)
@@ -321,6 +326,7 @@ struct RecipeFormView: View {
                 proteinPer100g: 0,
                 carbsPer100g: 0,
                 fatPer100g: 0,
+                fiberPer100g: 0,
                 isRecipe: true
             )
             modelContext.insert(recipe)
@@ -345,6 +351,32 @@ struct RecipeFormView: View {
                 proteinPer100g: draft.proteinPer100g,
                 carbsPer100g: draft.carbsPer100g,
                 fatPer100g: draft.fatPer100g,
+                fiberPer100g: draft.fiberPer100g,
+                sugarsPer100g: draft.sugarsPer100g,
+                addedSugarsPer100g: draft.addedSugarsPer100g,
+                sucrosePer100g: draft.sucrosePer100g,
+                glucosePer100g: draft.glucosePer100g,
+                fructosePer100g: draft.fructosePer100g,
+                lactosePer100g: draft.lactosePer100g,
+                maltosePer100g: draft.maltosePer100g,
+                maltodextrinsPer100g: draft.maltodextrinsPer100g,
+                starchPer100g: draft.starchPer100g,
+                polyolsPer100g: draft.polyolsPer100g,
+                saturatedFatPer100g: draft.saturatedFatPer100g,
+                transFatPer100g: draft.transFatPer100g,
+                monounsaturatedFatPer100g: draft.monounsaturatedFatPer100g,
+                polyunsaturatedFatPer100g: draft.polyunsaturatedFatPer100g,
+                omega3FatPer100g: draft.omega3FatPer100g,
+                omega6FatPer100g: draft.omega6FatPer100g,
+                omega9FatPer100g: draft.omega9FatPer100g,
+                saltPer100g: draft.saltPer100g,
+                sodiumPer100g: draft.sodiumPer100g,
+                cholesterolPer100g: draft.cholesterolPer100g,
+                solubleFiberPer100g: draft.solubleFiberPer100g,
+                insolubleFiberPer100g: draft.insolubleFiberPer100g,
+                caseinPer100g: draft.caseinPer100g,
+                serumProteinsPer100g: draft.serumProteinsPer100g,
+                alcoholPer100g: draft.alcoholPer100g,
                 sortOrder: index
             )
             ingredient.recipe = recipe

@@ -52,6 +52,12 @@ enum CalorynTheme {
 
     static let fatColor = terracotta
 
+    static let fiberColor = Color(UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor(red: 0.612, green: 0.702, blue: 0.655, alpha: 1)   // #9CB3A7
+            : UIColor(red: 0.361, green: 0.498, blue: 0.435, alpha: 1)   // #5C7F6F
+    })
+
     // Nutri-Score (A = best, E = worst)
     static let nutriscoreA = Color(red: 0.012, green: 0.506, blue: 0.255)   // #038141
     static let nutriscoreB = Color(red: 0.522, green: 0.733, blue: 0.184)   // #85BB2F

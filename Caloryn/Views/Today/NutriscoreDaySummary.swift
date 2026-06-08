@@ -18,7 +18,7 @@ struct NutriscoreDaySummary: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "leaf.fill")
+                Image(systemName: "heart.fill")
                     .font(.subheadline)
                     .foregroundStyle(CalorynTheme.sage)
                 Text("Today's health")

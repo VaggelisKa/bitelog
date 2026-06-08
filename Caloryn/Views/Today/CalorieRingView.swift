@@ -1,12 +1,15 @@
 import SwiftUI
+import UIKit
 
 struct CalorieRingView: View {
     let consumed: Double
     let target: Int
     let ringSize: CGFloat
+    var onDetailsRequested: (() -> Void)? = nil
 
     @ScaledMetric private var numberSize: CGFloat = 44
     @State private var animatedRingProgress: Double = 0
+    @State private var isDetailsPressing = false
 
     private var progress: Double {
         guard target > 0 else { return 0 }
@@ -80,11 +83,24 @@ struct CalorieRingView: View {
         .frame(width: ringSize, height: ringSize)
         .padding(20)
         .glassCircle()
+        .contentShape(Circle())
+        .scaleEffect(isDetailsPressing ? 0.94 : 1)
+        .animation(.smooth(duration: 0.2), value: isDetailsPressing)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityValue(isOver
             ? "\(consumedDisplay) eaten, \(overAmount) calories over target of \(target)"
             : "\(consumedDisplay) eaten, \(remaining) remaining of \(target)"
+        )
+        .accessibilityHint(onDetailsRequested == nil ? "" : "Long press to show nutrition details.")
+        .accessibilityAction(named: Text("Show nutrition details")) {
+            requestDetails()
+        }
+        .onLongPressGesture(
+            minimumDuration: 0.45,
+            maximumDistance: 24,
+            pressing: setDetailsPressing,
+            perform: requestDetails
         )
         .onAppear {
             animatedRingProgress = displayedRingProgress
@@ -102,6 +118,25 @@ struct CalorieRingView: View {
         } else {
             "Calorie ring, \(remaining) remaining of \(target) calories, \(consumedDisplay) eaten"
         }
+    }
+
+    private func setDetailsPressing(_ pressing: Bool) {
+        guard onDetailsRequested != nil else { return }
+        guard isDetailsPressing != pressing else { return }
+        if pressing {
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.prepare()
+            generator.impactOccurred(intensity: 0.55)
+        }
+        isDetailsPressing = pressing
+    }
+
+    private func requestDetails() {
+        guard let onDetailsRequested else { return }
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred(intensity: 0.75)
+        isDetailsPressing = false
+        onDetailsRequested()
     }
 }
 

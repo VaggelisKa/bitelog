@@ -8,6 +8,7 @@ struct TodayView: View {
 
     @State private var selectedDate: Date = Date().startOfDay
     @State private var showingFoodSearch = false
+    @State private var showingNutritionDetails = false
     @State private var selectedMealType: MealType = .breakfast
     @State private var selectedSnackIndex: Int = 1
 
@@ -86,7 +87,11 @@ struct TodayView: View {
                             consumed: totalCalories,
                             target: profile?.dailyCalorieTarget ?? 2000,
                             ringSize: ringSize
-                        )
+                        ) {
+                            withAnimation(.smooth(duration: 0.2)) {
+                                showingNutritionDetails = true
+                            }
+                        }
 
                         if let profile {
                             MacroProgressView(
@@ -153,6 +158,18 @@ struct TodayView: View {
             .sheet(isPresented: $showingFoodSearch) {
                 FoodSearchView(mealType: selectedMealType, logDate: selectedDate, snackIndex: selectedSnackIndex)
                     .presentationDragIndicator(.visible)
+            }
+            .sheet(isPresented: $showingNutritionDetails) {
+                NutritionDetailsView(
+                    date: selectedDate,
+                    entries: todayEntries,
+                    calorieTarget: profile?.dailyCalorieTarget ?? 2000,
+                    proteinTarget: profile?.proteinTargetG ?? 0,
+                    carbTarget: profile?.carbTargetG ?? 0,
+                    fatTarget: profile?.fatTargetG ?? 0
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
             }
         }
     }

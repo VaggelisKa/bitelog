@@ -15,13 +15,14 @@ struct CustomFoodFormView: View {
     @State private var proteinPerServing = ""
     @State private var carbsPerServing = ""
     @State private var fatPerServing = ""
+    @State private var fiberPerServing = ""
     @State private var servingSizeGrams = "100"
     @State private var showingDeleteConfirmation = false
 
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
-        case name, brand, calories, protein, carbs, fat, servingSize
+        case name, brand, calories, protein, carbs, fat, fiber, servingSize
     }
 
     private var isEditing: Bool { existingFood != nil }
@@ -185,6 +186,13 @@ struct CustomFoodFormView: View {
                 unit: "g",
                 focus: .fat
             )
+
+            nutritionField(
+                label: "Fiber",
+                text: $fiberPerServing,
+                unit: "g",
+                focus: .fiber
+            )
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
@@ -284,6 +292,7 @@ struct CustomFoodFormView: View {
         proteinPerServing = String(format: "%.1f", food.protein(forGrams: serving))
         carbsPerServing = String(format: "%.1f", food.carbs(forGrams: serving))
         fatPerServing = String(format: "%.1f", food.fat(forGrams: serving))
+        fiberPerServing = String(format: "%.1f", food.fiber(forGrams: serving))
     }
 
     private func saveFood() {
@@ -292,11 +301,13 @@ struct CustomFoodFormView: View {
         let pro = parseDecimal(proteinPerServing) ?? 0
         let carb = parseDecimal(carbsPerServing) ?? 0
         let f = parseDecimal(fatPerServing) ?? 0
+        let fiber = parseDecimal(fiberPerServing) ?? 0
 
         let calPer100 = cal / serving * 100
         let proPer100 = pro / serving * 100
         let carbPer100 = carb / serving * 100
         let fPer100 = f / serving * 100
+        let fiberPer100 = fiber / serving * 100
 
         if let food = existingFood {
             food.name = name.trimmingCharacters(in: .whitespaces)
@@ -305,6 +316,7 @@ struct CustomFoodFormView: View {
             food.proteinPer100g = proPer100
             food.carbsPer100g = carbPer100
             food.fatPer100g = fPer100
+            food.fiberPer100g = fiberPer100
             food.defaultServingG = serving
             food.servingDescription = nil
             try? modelContext.save()
@@ -317,6 +329,7 @@ struct CustomFoodFormView: View {
                 proteinPer100g: proPer100,
                 carbsPer100g: carbPer100,
                 fatPer100g: fPer100,
+                fiberPer100g: fiberPer100,
                 defaultServingG: serving,
                 isCustom: true
             )
