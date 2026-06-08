@@ -89,6 +89,32 @@ final class FoodSearchService {
             proteinPer100g: nutriments?.proteins100g ?? 0,
             carbsPer100g: nutriments?.carbohydrates100g ?? 0,
             fatPer100g: nutriments?.fat100g ?? 0,
+            fiberPer100g: nutriments?.fiber100g ?? 0,
+            sugarsPer100g: nutriments?.sugars100g,
+            addedSugarsPer100g: nutriments?.addedSugars100g,
+            sucrosePer100g: nutriments?.sucrose100g,
+            glucosePer100g: nutriments?.glucose100g,
+            fructosePer100g: nutriments?.fructose100g,
+            lactosePer100g: nutriments?.lactose100g,
+            maltosePer100g: nutriments?.maltose100g,
+            maltodextrinsPer100g: nutriments?.maltodextrins100g,
+            starchPer100g: nutriments?.starch100g,
+            polyolsPer100g: nutriments?.polyols100g,
+            saturatedFatPer100g: nutriments?.saturatedFat100g,
+            transFatPer100g: nutriments?.transFat100g,
+            monounsaturatedFatPer100g: nutriments?.monounsaturatedFat100g,
+            polyunsaturatedFatPer100g: nutriments?.polyunsaturatedFat100g,
+            omega3FatPer100g: nutriments?.omega3Fat100g,
+            omega6FatPer100g: nutriments?.omega6Fat100g,
+            omega9FatPer100g: nutriments?.omega9Fat100g,
+            saltPer100g: nutriments?.salt100g,
+            sodiumPer100g: nutriments?.sodium100g,
+            cholesterolPer100g: nutriments?.cholesterol100g,
+            solubleFiberPer100g: nutriments?.solubleFiber100g,
+            insolubleFiberPer100g: nutriments?.insolubleFiber100g,
+            caseinPer100g: nutriments?.casein100g,
+            serumProteinsPer100g: nutriments?.serumProteins100g,
+            alcoholPer100g: nutriments?.alcohol100g,
             defaultServingG: defaultServingG,
             servingDescription: servingDescription,
             nutriscoreGrade: Self.validNutriscoreGrade(product.nutritionGrades)
@@ -142,7 +168,7 @@ final class FoodSearchService {
             return SearchLocaleContext(preferredLanguageCodes: codes)
         }
 
-        private static func orderedUnique(_ values: [String]) -> [String] {
+        nonisolated private static func orderedUnique(_ values: [String]) -> [String] {
             var seen = Set<String>()
             return values.compactMap { value in
                 let norm = value.lowercased()
@@ -151,7 +177,7 @@ final class FoodSearchService {
             }
         }
 
-        private static func languageCode(from identifier: String) -> String? {
+        nonisolated private static func languageCode(from identifier: String) -> String? {
             identifier
                 .split(whereSeparator: { $0 == "-" || $0 == "_" })
                 .first?
@@ -301,11 +327,63 @@ struct OFFNutriments: Decodable, Hashable {
     let proteins100g: Double?
     let carbohydrates100g: Double?
     let fat100g: Double?
+    let fiber100g: Double?
+    let sugars100g: Double?
+    let addedSugars100g: Double?
+    let sucrose100g: Double?
+    let glucose100g: Double?
+    let fructose100g: Double?
+    let lactose100g: Double?
+    let maltose100g: Double?
+    let maltodextrins100g: Double?
+    let starch100g: Double?
+    let polyols100g: Double?
+    let saturatedFat100g: Double?
+    let transFat100g: Double?
+    let monounsaturatedFat100g: Double?
+    let polyunsaturatedFat100g: Double?
+    let omega3Fat100g: Double?
+    let omega6Fat100g: Double?
+    let omega9Fat100g: Double?
+    let salt100g: Double?
+    let sodium100g: Double?
+    let cholesterol100g: Double?
+    let solubleFiber100g: Double?
+    let insolubleFiber100g: Double?
+    let casein100g: Double?
+    let serumProteins100g: Double?
+    let alcohol100g: Double?
 
     enum CodingKeys: String, CodingKey {
         case energyKcal100g = "energy-kcal_100g"
         case proteins100g = "proteins_100g"
         case carbohydrates100g = "carbohydrates_100g"
         case fat100g = "fat_100g"
+        case fiber100g = "fiber_100g"
+        case sugars100g = "sugars_100g"
+        case addedSugars100g = "added-sugars_100g"
+        case sucrose100g = "sucrose_100g"
+        case glucose100g = "glucose_100g"
+        case fructose100g = "fructose_100g"
+        case lactose100g = "lactose_100g"
+        case maltose100g = "maltose_100g"
+        case maltodextrins100g = "maltodextrins_100g"
+        case starch100g = "starch_100g"
+        case polyols100g = "polyols_100g"
+        case saturatedFat100g = "saturated-fat_100g"
+        case transFat100g = "trans-fat_100g"
+        case monounsaturatedFat100g = "monounsaturated-fat_100g"
+        case polyunsaturatedFat100g = "polyunsaturated-fat_100g"
+        case omega3Fat100g = "omega-3-fat_100g"
+        case omega6Fat100g = "omega-6-fat_100g"
+        case omega9Fat100g = "omega-9-fat_100g"
+        case salt100g = "salt_100g"
+        case sodium100g = "sodium_100g"
+        case cholesterol100g = "cholesterol_100g"
+        case solubleFiber100g = "soluble-fiber_100g"
+        case insolubleFiber100g = "insoluble-fiber_100g"
+        case casein100g = "casein_100g"
+        case serumProteins100g = "serum-proteins_100g"
+        case alcohol100g = "alcohol_100g"
     }
 }
