@@ -20,13 +20,21 @@ final class UserProfile {
     var proteinTargetG: Double = 0
     var carbTargetG: Double = 0
     var fatTargetG: Double = 0
-    var fiberTargetG: Double = 30
+    var fiberTargetG: Double = 0
     var sugarsTargetG: Double = 0
     var addedSugarsTargetG: Double = 0
     var saturatedFatTargetG: Double = 0
     var sodiumTargetG: Double = 0
     var cholesterolTargetG: Double = 0
     var alcoholTargetG: Double = 0
+
+    var fiberGoalEnabled: Bool = false
+    var sugarsGoalEnabled: Bool = false
+    var addedSugarsGoalEnabled: Bool = false
+    var saturatedFatGoalEnabled: Bool = false
+    var sodiumGoalEnabled: Bool = false
+    var cholesterolGoalEnabled: Bool = false
+    var alcoholGoalEnabled: Bool = false
 
     var proteinGoalKindRaw: String = NutrientGoalKind.minimum.rawValue
     var carbGoalKindRaw: String = NutrientGoalKind.target.rawValue
@@ -54,7 +62,7 @@ final class UserProfile {
         proteinRatio: Double = 0.30,
         carbRatio: Double = 0.40,
         fatRatio: Double = 0.30,
-        fiberTargetG: Double = 30
+        fiberTargetG: Double = 0
     ) {
         self.id = UUID()
         self.age = age
@@ -131,7 +139,7 @@ final class UserProfile {
             value = alcoholTargetG
         }
 
-        return value > 0 ? value : nil
+        return isGoalEnabled(for: nutrient) && value > 0 ? value : nil
     }
 
     func setTarget(_ target: Double?, for nutrient: TrackedNutrient) {
@@ -145,20 +153,48 @@ final class UserProfile {
             fatTargetG = value
         case .fiber:
             fiberTargetG = value
+            fiberGoalEnabled = value > 0
         case .sugars:
             sugarsTargetG = value
+            sugarsGoalEnabled = value > 0
         case .addedSugars:
             addedSugarsTargetG = value
+            addedSugarsGoalEnabled = value > 0
         case .saturatedFat:
             saturatedFatTargetG = value
+            saturatedFatGoalEnabled = value > 0
         case .sodium:
             sodiumTargetG = value
+            sodiumGoalEnabled = value > 0
         case .cholesterol:
             cholesterolTargetG = value
+            cholesterolGoalEnabled = value > 0
         case .alcohol:
             alcoholTargetG = value
+            alcoholGoalEnabled = value > 0
         }
         updatedAt = Date()
+    }
+
+    func isGoalEnabled(for nutrient: TrackedNutrient) -> Bool {
+        switch nutrient {
+        case .protein, .carbs, .fat:
+            true
+        case .fiber:
+            fiberGoalEnabled
+        case .sugars:
+            sugarsGoalEnabled
+        case .addedSugars:
+            addedSugarsGoalEnabled
+        case .saturatedFat:
+            saturatedFatGoalEnabled
+        case .sodium:
+            sodiumGoalEnabled
+        case .cholesterol:
+            cholesterolGoalEnabled
+        case .alcohol:
+            alcoholGoalEnabled
+        }
     }
 
     func goalKind(for nutrient: TrackedNutrient) -> NutrientGoalKind {
