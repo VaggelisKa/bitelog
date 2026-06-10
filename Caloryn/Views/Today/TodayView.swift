@@ -25,18 +25,6 @@ struct TodayView: View {
         todayEntries.reduce(0) { $0 + $1.calories }
     }
 
-    private var totalProtein: Double {
-        todayEntries.reduce(0) { $0 + $1.proteinG }
-    }
-
-    private var totalCarbs: Double {
-        todayEntries.reduce(0) { $0 + $1.carbsG }
-    }
-
-    private var totalFat: Double {
-        todayEntries.reduce(0) { $0 + $1.fatG }
-    }
-
     private var nutriscoreDistribution: [(grade: String, count: Int)] {
         let grades = todayEntries.compactMap { $0.foodItem?.nutriscoreGrade }
         let valid = ["a", "b", "c", "d", "e"]
@@ -95,9 +83,7 @@ struct TodayView: View {
 
                         if let profile {
                             MacroProgressView(
-                                proteinG: totalProtein,
-                                carbsG: totalCarbs,
-                                fatG: totalFat,
+                                entries: todayEntries,
                                 proteinTarget: profile.proteinTargetG,
                                 carbTarget: profile.carbTargetG,
                                 fatTarget: profile.fatTargetG
