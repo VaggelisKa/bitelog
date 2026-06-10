@@ -66,7 +66,8 @@ struct SettingsView: View {
     private func goalSection(_ profile: UserProfile) -> some View {
         Section {
             HStack {
-                Text("Daily Target")
+                Label("Calories", systemImage: "flame.fill")
+                    .foregroundStyle(CalorynTheme.textPrimary)
                 Spacer()
                 Text(profile.dailyCalorieTarget.kcalFormatted)
                     .font(CalorynTheme.numericBody)
@@ -75,11 +76,27 @@ struct SettingsView: View {
 
             if !profile.manualOverride {
                 HStack {
-                    Text("Adjustment")
+                    Label("Adjustment", systemImage: "plusminus")
+                        .foregroundStyle(CalorynTheme.textPrimary)
                     Spacer()
                     Text(adjustmentLabel(for: profile.calorieDeficit))
                         .font(CalorynTheme.numericBody)
                         .foregroundStyle(CalorynTheme.textSecondary)
+                }
+            }
+
+            ForEach(goalSummaryNutrients(for: profile)) { nutrient in
+                HStack {
+                    Label(nutrient.displayName, systemImage: nutrient.systemImage)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+
+                    Spacer()
+
+                    Text(goalSummaryText(for: nutrient, in: profile))
+                        .font(CalorynTheme.numericBody)
+                        .foregroundStyle(nutrient.color)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
             }
 
@@ -88,6 +105,24 @@ struct SettingsView: View {
             }
         } header: {
             Text("Goal")
+        }
+    }
+
+    private func goalSummaryNutrients(for profile: UserProfile) -> [TrackedNutrient] {
+        TrackedNutrient.allCases.filter { profile.target(for: $0) != nil }
+    }
+
+    private func goalSummaryText(for nutrient: TrackedNutrient, in profile: UserProfile) -> String {
+        guard let target = profile.target(for: nutrient) else { return "Not set" }
+        let formattedTarget = nutrient.unit.formatted(target)
+
+        switch profile.goalKind(for: nutrient) {
+        case .minimum:
+            return "At least \(formattedTarget)"
+        case .target:
+            return formattedTarget
+        case .maximum:
+            return "At most \(formattedTarget)"
         }
     }
 
@@ -197,24 +232,54 @@ private struct ShareSheet: UIViewControllerRepresentable {
 
 // MARK: - Goal Edit
 
+private enum GoalEditFocus: Hashable {
+    case manualTarget
+    case nutrient(TrackedNutrient)
+}
+
 struct GoalEditView: View {
     @Bindable var profile: UserProfile
     @Environment(\.dismiss) private var dismiss
 
+    @FocusState private var focusedField: GoalEditFocus?
     @State private var targetText: String = ""
     @State private var manualOverride = false
     @State private var calorieDeficit: Double = 500
     @State private var proteinRatio: Double = 0.30
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
+    @State private var nutrientTargetTexts: [TrackedNutrient: String] = [:]
+    @State private var nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind] = [:]
 
     private var macroTotal: Double { proteinRatio + carbRatio + fatRatio }
     private var isMacroValid: Bool { abs(macroTotal - 1.0) <= 0.01 }
     private var manualTarget: Int? { Int(targetText) }
     private var isManualTargetValid: Bool { !manualOverride || (manualTarget ?? 0) >= 1000 }
+    private var areNutrientGoalsValid: Bool {
+        TrackedNutrient.editableGoalNutrients.allSatisfy { nutrient in
+            let text = nutrientTargetTexts[nutrient, default: ""].trimmingCharacters(in: .whitespacesAndNewlines)
+            return text.isEmpty || storedTarget(from: text, for: nutrient) != nil
+        }
+    }
 
     private var calculatedTarget: Int {
         NutritionCalculator.defaultTarget(tdee: profile.tdee, deficit: calorieDeficit)
+    }
+
+    private var effectiveCalorieTarget: Int {
+        manualOverride ? (manualTarget ?? calculatedTarget) : calculatedTarget
+    }
+
+    private var previewProteinTarget: Double {
+        NutritionCalculator.macroGrams(calories: Double(effectiveCalorieTarget), ratio: proteinRatio, caloriesPerGram: 4)
+    }
+
+    private var previewCarbTarget: Double {
+        NutritionCalculator.macroGrams(calories: Double(effectiveCalorieTarget), ratio: carbRatio, caloriesPerGram: 4)
+    }
+
+    private var previewFatTarget: Double {
+        NutritionCalculator.macroGrams(calories: Double(effectiveCalorieTarget), ratio: fatRatio, caloriesPerGram: 9)
     }
 
     private var deficitLabel: String {
@@ -241,6 +306,7 @@ struct GoalEditView: View {
                     HStack {
                         TextField("Target", text: $targetText)
                             .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .manualTarget)
                         Text("kcal")
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -276,19 +342,19 @@ struct GoalEditView: View {
                 }
             }
 
-            Section("Macro Ratios") {
+            Section("Macro Goals") {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Protein: \(Int(proteinRatio * 100))%")
+                    Text("Protein: \(Int(proteinRatio * 100))% · \(previewProteinTarget.macroFormatted)")
                     Slider(value: $proteinRatio, in: 0.10...0.50, step: 0.05)
                         .tint(CalorynTheme.proteinColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Carbs: \(Int(carbRatio * 100))%")
+                    Text("Carbs: \(Int(carbRatio * 100))% · \(previewCarbTarget.macroFormatted)")
                     Slider(value: $carbRatio, in: 0.10...0.60, step: 0.05)
                         .tint(CalorynTheme.carbColor)
                 }
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Fat: \(Int(fatRatio * 100))%")
+                    Text("Fat: \(Int(fatRatio * 100))% · \(previewFatTarget.macroFormatted)")
                     Slider(value: $fatRatio, in: 0.10...0.50, step: 0.05)
                         .tint(CalorynTheme.fatColor)
                 }
@@ -300,10 +366,41 @@ struct GoalEditView: View {
                         .foregroundStyle(CalorynTheme.terracotta)
                 }
             }
+
+            Section {
+                ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
+                    NutrientGoalEditRow(
+                        nutrient: nutrient,
+                        targetText: targetTextBinding(for: nutrient),
+                        goalKind: goalKindBinding(for: nutrient),
+                        isInvalid: isInvalidTarget(for: nutrient),
+                        focusedField: $focusedField
+                    )
+                }
+
+                if !areNutrientGoalsValid {
+                    Text("Goal values must be positive numbers. Leave a field blank to remove that goal.")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.terracotta)
+                }
+            } header: {
+                Text("Additional Nutrient Goals")
+            } footer: {
+                Text("These goals appear anywhere the nutrient is shown. Sodium and cholesterol are entered in milligrams.")
+            }
         }
         .navigationTitle("Edit Goal")
         .navigationBarTitleDisplayMode(.inline)
+        .scrollDismissesKeyboard(.interactively)
         .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+                .fontWeight(.semibold)
+            }
+
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
                     profile.manualOverride = manualOverride
@@ -312,10 +409,11 @@ struct GoalEditView: View {
                         profile.dailyCalorieTarget = manualTarget
                     }
                     profile.recalculate(proteinRatio: proteinRatio, carbRatio: carbRatio, fatRatio: fatRatio)
+                    saveAdditionalNutrientGoals()
                     dismiss()
                 }
                 .fontWeight(.semibold)
-                .disabled(!isMacroValid || !isManualTargetValid)
+                .disabled(!isMacroValid || !isManualTargetValid || !areNutrientGoalsValid)
             }
         }
         .onAppear {
@@ -328,7 +426,110 @@ struct GoalEditView: View {
                 carbRatio = (profile.carbTargetG * 4.0) / cal
                 fatRatio = (profile.fatTargetG * 9.0) / cal
             }
+            loadAdditionalNutrientGoals()
         }
+    }
+
+    private func targetTextBinding(for nutrient: TrackedNutrient) -> Binding<String> {
+        Binding(
+            get: { nutrientTargetTexts[nutrient, default: ""] },
+            set: { nutrientTargetTexts[nutrient] = $0 }
+        )
+    }
+
+    private func goalKindBinding(for nutrient: TrackedNutrient) -> Binding<NutrientGoalKind> {
+        Binding(
+            get: { nutrientGoalKinds[nutrient, default: nutrient.defaultGoalKind] },
+            set: { nutrientGoalKinds[nutrient] = $0 }
+        )
+    }
+
+    private func loadAdditionalNutrientGoals() {
+        for nutrient in TrackedNutrient.editableGoalNutrients {
+            if let target = profile.target(for: nutrient) {
+                nutrientTargetTexts[nutrient] = nutrient.unit.inputFormatted(target)
+            } else {
+                nutrientTargetTexts[nutrient] = ""
+            }
+            nutrientGoalKinds[nutrient] = profile.goalKind(for: nutrient)
+        }
+    }
+
+    private func saveAdditionalNutrientGoals() {
+        for nutrient in TrackedNutrient.editableGoalNutrients {
+            let text = nutrientTargetTexts[nutrient, default: ""]
+            let target = storedTarget(from: text, for: nutrient)
+            profile.setGoalKind(nutrientGoalKinds[nutrient, default: nutrient.defaultGoalKind], for: nutrient)
+            profile.setTarget(target, for: nutrient)
+        }
+    }
+
+    private func isInvalidTarget(for nutrient: TrackedNutrient) -> Bool {
+        let text = nutrientTargetTexts[nutrient, default: ""].trimmingCharacters(in: .whitespacesAndNewlines)
+        return !text.isEmpty && storedTarget(from: text, for: nutrient) == nil
+    }
+
+    private func storedTarget(from text: String, for nutrient: TrackedNutrient) -> Double? {
+        let normalized = text
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: ",", with: ".")
+
+        guard !normalized.isEmpty, let input = Double(normalized), input > 0 else {
+            return nil
+        }
+
+        return nutrient.unit.storedValue(fromInput: input)
+    }
+}
+
+private struct NutrientGoalEditRow: View {
+    let nutrient: TrackedNutrient
+    @Binding var targetText: String
+    @Binding var goalKind: NutrientGoalKind
+    let isInvalid: Bool
+    @FocusState.Binding var focusedField: GoalEditFocus?
+
+    private var hasValue: Bool {
+        !targetText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                Label(nutrient.displayName, systemImage: nutrient.systemImage)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+
+                Spacer()
+
+                TextField("Optional", text: $targetText)
+                    .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .nutrient(nutrient))
+                    .multilineTextAlignment(.trailing)
+                    .font(CalorynTheme.numericBody)
+                    .foregroundStyle(isInvalid ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
+                    .frame(width: 92)
+                    .accessibilityLabel("\(nutrient.displayName) goal in \(nutrient.unit.inputUnitLabel)")
+
+                Text(nutrient.unit.inputUnitLabel)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .frame(width: 24, alignment: .leading)
+            }
+
+            if hasValue {
+                Picker("Goal type", selection: $goalKind) {
+                    ForEach(NutrientGoalKind.allCases) { kind in
+                        Text(kind.displayName).tag(kind)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("\(nutrient.displayName) goal type")
+            }
+        }
+        .padding(.vertical, 4)
+        .animation(.default, value: hasValue)
     }
 }
 
