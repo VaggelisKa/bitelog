@@ -209,25 +209,25 @@ private enum TrackedNutrient: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .protein:
-            "bolt.fill"
+            "dumbbell.fill"
         case .carbs:
-            "chart.bar.xaxis"
+            "fork.knife"
         case .fat:
             "drop.fill"
         case .fiber:
-            "leaf.fill"
+            "carrot.fill"
         case .sugars:
             "cube.fill"
         case .addedSugars:
-            "plus.circle.fill"
+            "cube.transparent.fill"
         case .saturatedFat:
-            "drop.fill"
+            "exclamationmark.triangle.fill"
         case .sodium:
-            "circle.grid.cross"
+            "s.circle.fill"
         case .cholesterol:
             "heart.fill"
         case .alcohol:
-            "ellipsis.circle.fill"
+            "wineglass.fill"
         }
     }
 
