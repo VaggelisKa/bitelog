@@ -27,6 +27,27 @@ struct PortionPickerView: View {
         case recipeServing
     }
 
+    private struct PortionNutrient: Identifiable {
+        enum Unit {
+            case grams
+            case milligramsFromGrams
+        }
+
+        let id: String
+        let label: String
+        let value: Double
+        let unit: Unit
+
+        var formattedValue: String {
+            switch unit {
+            case .grams:
+                value.macroFormatted
+            case .milligramsFromGrams:
+                "\(Int((value * 1000).rounded()))mg"
+            }
+        }
+    }
+
     private struct RecipeServingOption: Identifiable, Hashable {
         let id: String
         let label: String
@@ -72,6 +93,46 @@ struct PortionPickerView: View {
     private var previewProtein: Double { foodItem.protein(forGrams: portionGrams) }
     private var previewCarbs: Double { foodItem.carbs(forGrams: portionGrams) }
     private var previewFat: Double { foodItem.fat(forGrams: portionGrams) }
+    private var previewFiber: Double { foodItem.fiber(forGrams: portionGrams) }
+
+    private var nutritionDetails: [PortionNutrient] {
+        [
+            PortionNutrient(id: "protein", label: "Protein", value: previewProtein, unit: .grams),
+            PortionNutrient(id: "carbs", label: "Carbs", value: previewCarbs, unit: .grams),
+            PortionNutrient(id: "fat", label: "Fat", value: previewFat, unit: .grams),
+            PortionNutrient(id: "fiber", label: "Fiber", value: previewFiber, unit: .grams)
+        ] + optionalNutritionDetails
+    }
+
+    private var optionalNutritionDetails: [PortionNutrient] {
+        [
+            nutrient("sugars", "Sugars", foodItem.sugars(forGrams: portionGrams)),
+            nutrient("added-sugars", "Added sugars", foodItem.addedSugars(forGrams: portionGrams)),
+            nutrient("sucrose", "Sucrose", foodItem.sucrose(forGrams: portionGrams)),
+            nutrient("glucose", "Glucose", foodItem.glucose(forGrams: portionGrams)),
+            nutrient("fructose", "Fructose", foodItem.fructose(forGrams: portionGrams)),
+            nutrient("lactose", "Lactose", foodItem.lactose(forGrams: portionGrams)),
+            nutrient("maltose", "Maltose", foodItem.maltose(forGrams: portionGrams)),
+            nutrient("maltodextrins", "Maltodextrins", foodItem.maltodextrins(forGrams: portionGrams)),
+            nutrient("starch", "Starch", foodItem.starch(forGrams: portionGrams)),
+            nutrient("polyols", "Polyols", foodItem.polyols(forGrams: portionGrams)),
+            nutrient("saturated-fat", "Saturated fat", foodItem.saturatedFat(forGrams: portionGrams)),
+            nutrient("trans-fat", "Trans fat", foodItem.transFat(forGrams: portionGrams)),
+            nutrient("monounsaturated-fat", "Monounsaturated", foodItem.monounsaturatedFat(forGrams: portionGrams)),
+            nutrient("polyunsaturated-fat", "Polyunsaturated", foodItem.polyunsaturatedFat(forGrams: portionGrams)),
+            nutrient("omega-3-fat", "Omega-3 fat", foodItem.omega3Fat(forGrams: portionGrams)),
+            nutrient("omega-6-fat", "Omega-6 fat", foodItem.omega6Fat(forGrams: portionGrams)),
+            nutrient("omega-9-fat", "Omega-9 fat", foodItem.omega9Fat(forGrams: portionGrams)),
+            nutrient("salt", "Salt", foodItem.salt(forGrams: portionGrams)),
+            nutrient("sodium", "Sodium", foodItem.sodium(forGrams: portionGrams), unit: .milligramsFromGrams),
+            nutrient("cholesterol", "Cholesterol", foodItem.cholesterol(forGrams: portionGrams), unit: .milligramsFromGrams),
+            nutrient("soluble-fiber", "Soluble fiber", foodItem.solubleFiber(forGrams: portionGrams)),
+            nutrient("insoluble-fiber", "Insoluble fiber", foodItem.insolubleFiber(forGrams: portionGrams)),
+            nutrient("casein", "Casein", foodItem.casein(forGrams: portionGrams)),
+            nutrient("serum-proteins", "Serum proteins", foodItem.serumProteins(forGrams: portionGrams)),
+            nutrient("alcohol", "Alcohol", foodItem.alcohol(forGrams: portionGrams))
+        ].compactMap { $0 }
+    }
 
     private var recipeTotalGrams: Double {
         foodItem.defaultServingG ?? 100
@@ -90,9 +151,9 @@ struct PortionPickerView: View {
 
                 portionPicker
 
-                macroPreview
-
                 mealSelector
+
+                nutritionPreview
             }
             .padding(.horizontal, CalorynTheme.pagePadding)
             .padding(.bottom, 100)
@@ -136,16 +197,20 @@ struct PortionPickerView: View {
             )
         }
         .safeAreaInset(edge: .bottom) {
-            Button(action: logFood) {
-                Text(foodItem.isRecipe ? "Log Recipe" : "Log Food")
-                    .font(.system(.headline, design: .rounded))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+            VStack(spacing: 0) {
+                Button(action: logFood) {
+                    Text(foodItem.isRecipe ? "Log Recipe" : "Log Food")
+                        .font(.system(.headline, design: .rounded))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16)
+                }
+                .buttonStyle(.glassProminent)
+                .tint(CalorynTheme.sage)
+                .padding(.horizontal, CalorynTheme.pagePadding)
+                .padding(.top, 10)
+                .padding(.bottom, 16)
             }
-            .buttonStyle(.glassProminent)
-            .tint(CalorynTheme.sage)
-            .padding(.horizontal, CalorynTheme.pagePadding)
-            .padding(.bottom, 16)
+            .background(.regularMaterial)
         }
     }
 
@@ -296,28 +361,64 @@ struct PortionPickerView: View {
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private var macroPreview: some View {
-        HStack(spacing: CalorynTheme.cardSpacing) {
-            macroPill("Protein", value: previewProtein, color: CalorynTheme.proteinColor)
-            macroPill("Carbs", value: previewCarbs, color: CalorynTheme.carbColor)
-            macroPill("Fat", value: previewFat, color: CalorynTheme.fatColor)
+    private var nutritionPreview: some View {
+        let items = nutritionDetails
+
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("NUTRITION")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+
+                Spacer()
+
+                Text("\(Int(portionGrams.rounded()))g")
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .contentTransition(.numericText())
+                    .animation(.smooth(duration: 0.3), value: Int(portionGrams.rounded()))
+            }
+
+            VStack(spacing: 0) {
+                ForEach(items) { item in
+                    nutrientRow(item)
+                        .padding(.vertical, 7)
+
+                    if item.id != items.last?.id {
+                        Divider()
+                            .foregroundStyle(CalorynTheme.stone.opacity(0.3))
+                    }
+                }
+            }
         }
+        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
-    private func macroPill(_ label: String, value: Double, color: Color) -> some View {
-        VStack(spacing: 4) {
-            Text(label)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
-            Text(value.macroFormatted)
+    private func nutrientRow(_ nutrient: PortionNutrient) -> some View {
+        HStack {
+            Text(nutrient.label)
+                .font(CalorynTheme.bodyText)
+                .foregroundStyle(CalorynTheme.textPrimary)
+
+            Spacer()
+
+            Text(nutrient.formattedValue)
                 .font(CalorynTheme.numericBody)
-                .foregroundStyle(color)
+                .foregroundStyle(CalorynTheme.textPrimary)
                 .contentTransition(.numericText())
-                .animation(.smooth(duration: 0.3), value: value.macroFormatted)
+                .animation(.smooth(duration: 0.3), value: nutrient.formattedValue)
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func nutrient(
+        _ id: String,
+        _ label: String,
+        _ value: Double?,
+        unit: PortionNutrient.Unit = .grams
+    ) -> PortionNutrient? {
+        guard let value else { return nil }
+        return PortionNutrient(id: id, label: label, value: value, unit: unit)
     }
 
     private var mealSelector: some View {
@@ -417,6 +518,9 @@ struct PortionPickerView: View {
         proteinPer100g: 11,
         carbsPer100g: 4,
         fatPer100g: 0,
+        fiberPer100g: 0,
+        sugarsPer100g: 3.7,
+        sodiumPer100g: 0.05,
         defaultServingG: 170,
         servingDescription: "1 cup (170g)"
     )
