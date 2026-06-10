@@ -66,11 +66,23 @@ struct SettingsView: View {
     private func goalSection(_ profile: UserProfile) -> some View {
         Section {
             HStack {
-                Text("Calories")
+                Label("Calories", systemImage: "flame.fill")
+                    .foregroundStyle(CalorynTheme.textPrimary)
                 Spacer()
                 Text(profile.dailyCalorieTarget.kcalFormatted)
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.sage)
+            }
+
+            if !profile.manualOverride {
+                HStack {
+                    Label("Adjustment", systemImage: "plusminus")
+                        .foregroundStyle(CalorynTheme.textPrimary)
+                    Spacer()
+                    Text(adjustmentLabel(for: profile.calorieDeficit))
+                        .font(CalorynTheme.numericBody)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
             }
 
             ForEach(goalSummaryNutrients(for: profile)) { nutrient in
@@ -85,16 +97,6 @@ struct SettingsView: View {
                         .foregroundStyle(nutrient.color)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
-                }
-            }
-
-            if !profile.manualOverride {
-                HStack {
-                    Text("Adjustment")
-                    Spacer()
-                    Text(adjustmentLabel(for: profile.calorieDeficit))
-                        .font(CalorynTheme.numericBody)
-                        .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
 
@@ -230,10 +232,16 @@ private struct ShareSheet: UIViewControllerRepresentable {
 
 // MARK: - Goal Edit
 
+private enum GoalEditFocus: Hashable {
+    case manualTarget
+    case nutrient(TrackedNutrient)
+}
+
 struct GoalEditView: View {
     @Bindable var profile: UserProfile
     @Environment(\.dismiss) private var dismiss
 
+    @FocusState private var focusedField: GoalEditFocus?
     @State private var targetText: String = ""
     @State private var manualOverride = false
     @State private var calorieDeficit: Double = 500
@@ -298,6 +306,7 @@ struct GoalEditView: View {
                     HStack {
                         TextField("Target", text: $targetText)
                             .keyboardType(.numberPad)
+                            .focused($focusedField, equals: .manualTarget)
                         Text("kcal")
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -364,7 +373,8 @@ struct GoalEditView: View {
                         nutrient: nutrient,
                         targetText: targetTextBinding(for: nutrient),
                         goalKind: goalKindBinding(for: nutrient),
-                        isInvalid: isInvalidTarget(for: nutrient)
+                        isInvalid: isInvalidTarget(for: nutrient),
+                        focusedField: $focusedField
                     )
                 }
 
@@ -381,7 +391,16 @@ struct GoalEditView: View {
         }
         .navigationTitle("Edit Goal")
         .navigationBarTitleDisplayMode(.inline)
+        .scrollDismissesKeyboard(.interactively)
         .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                }
+                .fontWeight(.semibold)
+            }
+
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
                     profile.manualOverride = manualOverride
@@ -468,6 +487,11 @@ private struct NutrientGoalEditRow: View {
     @Binding var targetText: String
     @Binding var goalKind: NutrientGoalKind
     let isInvalid: Bool
+    @FocusState.Binding var focusedField: GoalEditFocus?
+
+    private var hasValue: Bool {
+        !targetText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -481,10 +505,12 @@ private struct NutrientGoalEditRow: View {
 
                 TextField("Optional", text: $targetText)
                     .keyboardType(.decimalPad)
+                    .focused($focusedField, equals: .nutrient(nutrient))
                     .multilineTextAlignment(.trailing)
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(isInvalid ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
                     .frame(width: 92)
+                    .accessibilityLabel("\(nutrient.displayName) goal in \(nutrient.unit.inputUnitLabel)")
 
                 Text(nutrient.unit.inputUnitLabel)
                     .font(CalorynTheme.caption)
@@ -492,15 +518,18 @@ private struct NutrientGoalEditRow: View {
                     .frame(width: 24, alignment: .leading)
             }
 
-            Picker("Goal type", selection: $goalKind) {
-                ForEach(NutrientGoalKind.allCases) { kind in
-                    Text(kind.displayName).tag(kind)
+            if hasValue {
+                Picker("Goal type", selection: $goalKind) {
+                    ForEach(NutrientGoalKind.allCases) { kind in
+                        Text(kind.displayName).tag(kind)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("\(nutrient.displayName) goal type")
             }
-            .pickerStyle(.segmented)
-            .accessibilityLabel("\(nutrient.displayName) goal type")
         }
         .padding(.vertical, 4)
+        .animation(.default, value: hasValue)
     }
 }
 
