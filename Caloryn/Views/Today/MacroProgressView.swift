@@ -2,9 +2,8 @@ import SwiftUI
 
 struct MacroProgressView: View {
     let entries: [FoodLogEntry]
-    let proteinTarget: Double
-    let carbTarget: Double
-    let fatTarget: Double
+    let nutrientTargets: [TrackedNutrient: Double]
+    let nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind]
 
     @AppStorage("todayTrackedNutrients") private var selectedNutrientIDs = TrackedNutrient.defaultSelectionRaw
     @State private var showingCustomizer = false
@@ -74,21 +73,9 @@ struct MacroProgressView: View {
         TrackedNutrientMetric(
             nutrient: nutrient,
             value: nutrient.value(in: entries),
-            target: target(for: nutrient)
+            target: nutrientTargets[nutrient],
+            goalKind: nutrientTargets[nutrient] == nil ? nil : nutrientGoalKinds[nutrient, default: nutrient.defaultGoalKind]
         )
-    }
-
-    private func target(for nutrient: TrackedNutrient) -> Double? {
-        switch nutrient {
-        case .protein:
-            proteinTarget
-        case .carbs:
-            carbTarget
-        case .fat:
-            fatTarget
-        case .fiber, .sugars, .addedSugars, .saturatedFat, .sodium, .cholesterol, .alcohol:
-            nil
-        }
     }
 }
 
@@ -115,226 +102,6 @@ private struct TrailingScrollFadeMask: View {
     }
 }
 
-private enum TrackedNutrient: String, CaseIterable, Identifiable {
-    case protein
-    case carbs
-    case fat
-    case fiber
-    case sugars
-    case addedSugars
-    case saturatedFat
-    case sodium
-    case cholesterol
-    case alcohol
-
-    var id: String { rawValue }
-
-    static let minimumSelectionCount = 3
-    static let defaultSelection: [TrackedNutrient] = [.protein, .carbs, .fat]
-    static let defaultSelectionRaw = rawSelection(from: defaultSelection)
-
-    static func selected(from rawValue: String) -> [TrackedNutrient] {
-        let nutrients = rawValue
-            .split(separator: ",")
-            .compactMap { TrackedNutrient(rawValue: String($0)) }
-            .reduce(into: [TrackedNutrient]()) { selected, nutrient in
-                guard !selected.contains(nutrient) else { return }
-                selected.append(nutrient)
-            }
-
-        return normalizedSelection(from: nutrients)
-    }
-
-    static func rawSelection(from nutrients: [TrackedNutrient]) -> String {
-        nutrients.map(\.rawValue).joined(separator: ",")
-    }
-
-    static func normalizedSelection(from nutrients: [TrackedNutrient]) -> [TrackedNutrient] {
-        var selection = nutrients.reduce(into: [TrackedNutrient]()) { selected, nutrient in
-            guard !selected.contains(nutrient) else { return }
-            selected.append(nutrient)
-        }
-
-        if selection.isEmpty {
-            selection = defaultSelection
-        }
-
-        for nutrient in defaultSelection where selection.count < minimumSelectionCount && !selection.contains(nutrient) {
-            selection.append(nutrient)
-        }
-
-        for nutrient in allCases where selection.count < minimumSelectionCount && !selection.contains(nutrient) {
-            selection.append(nutrient)
-        }
-
-        return selection
-    }
-
-    var displayName: String {
-        switch self {
-        case .protein:
-            "Protein"
-        case .carbs:
-            "Carbs"
-        case .fat:
-            "Fat"
-        case .fiber:
-            "Fiber"
-        case .sugars:
-            "Sugars"
-        case .addedSugars:
-            "Added Sugars"
-        case .saturatedFat:
-            "Saturated Fat"
-        case .sodium:
-            "Sodium"
-        case .cholesterol:
-            "Cholesterol"
-        case .alcohol:
-            "Alcohol"
-        }
-    }
-
-    var compactName: String {
-        switch self {
-        case .addedSugars:
-            "Added Sugar"
-        case .saturatedFat:
-            "Sat Fat"
-        default:
-            displayName
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .protein:
-            "dumbbell.fill"
-        case .carbs:
-            "fork.knife"
-        case .fat:
-            "drop.fill"
-        case .fiber:
-            "carrot.fill"
-        case .sugars:
-            "cube.fill"
-        case .addedSugars:
-            "cube.transparent.fill"
-        case .saturatedFat:
-            "exclamationmark.triangle.fill"
-        case .sodium:
-            "s.circle.fill"
-        case .cholesterol:
-            "heart.fill"
-        case .alcohol:
-            "wineglass.fill"
-        }
-    }
-
-    var color: Color {
-        switch self {
-        case .protein:
-            CalorynTheme.proteinColor
-        case .carbs, .sugars:
-            CalorynTheme.carbColor
-        case .fat, .addedSugars, .saturatedFat, .cholesterol:
-            CalorynTheme.fatColor
-        case .fiber:
-            CalorynTheme.fiberColor
-        case .sodium:
-            CalorynTheme.stone
-        case .alcohol:
-            CalorynTheme.textSecondary
-        }
-    }
-
-    var unit: TrackedNutrientUnit {
-        switch self {
-        case .sodium, .cholesterol:
-            .milligramsFromGrams
-        case .protein, .carbs, .fat, .fiber, .sugars, .addedSugars, .saturatedFat, .alcohol:
-            .grams
-        }
-    }
-
-    func value(in entries: [FoodLogEntry]) -> Double {
-        switch self {
-        case .protein:
-            total(entries, \.proteinG)
-        case .carbs:
-            total(entries, \.carbsG)
-        case .fat:
-            total(entries, \.fatG)
-        case .fiber:
-            total(entries, \.fiberG)
-        case .sugars:
-            optionalTotal(entries, \.sugarsG)
-        case .addedSugars:
-            optionalTotal(entries, \.addedSugarsG)
-        case .saturatedFat:
-            optionalTotal(entries, \.saturatedFatG)
-        case .sodium:
-            optionalTotal(entries, \.sodiumG)
-        case .cholesterol:
-            optionalTotal(entries, \.cholesterolG)
-        case .alcohol:
-            optionalTotal(entries, \.alcoholG)
-        }
-    }
-
-    private func total(_ entries: [FoodLogEntry], _ keyPath: KeyPath<FoodLogEntry, Double>) -> Double {
-        entries.reduce(0) { $0 + $1[keyPath: keyPath] }
-    }
-
-    private func optionalTotal(_ entries: [FoodLogEntry], _ keyPath: KeyPath<FoodLogEntry, Double?>) -> Double {
-        entries.reduce(0) { $0 + ($1[keyPath: keyPath] ?? 0) }
-    }
-}
-
-private enum TrackedNutrientUnit {
-    case grams
-    case milligramsFromGrams
-
-    func formatted(_ value: Double) -> String {
-        switch self {
-        case .grams:
-            value.macroFormatted
-        case .milligramsFromGrams:
-            "\(Int((value * 1000).rounded()))mg"
-        }
-    }
-}
-
-private struct TrackedNutrientMetric: Identifiable {
-    let nutrient: TrackedNutrient
-    let value: Double
-    let target: Double?
-
-    var id: String { nutrient.id }
-
-    var formattedValue: String {
-        return nutrient.unit.formatted(value)
-    }
-
-    var formattedTarget: String? {
-        guard let target, target > 0 else { return nil }
-        return nutrient.unit.formatted(target)
-    }
-
-    var progress: Double {
-        guard let target, target > 0 else { return 0 }
-        return min(value / target, 1.0)
-    }
-
-    var accessibilityLabel: String {
-        let formattedCurrent = nutrient.unit.formatted(value)
-        if let formattedTarget {
-            return "\(nutrient.displayName): \(formattedCurrent) of \(formattedTarget)"
-        }
-        return "\(nutrient.displayName): \(formattedCurrent) today"
-    }
-}
-
 private struct NutrientMetricTile: View {
     let metric: TrackedNutrientMetric
 
@@ -357,7 +124,7 @@ private struct NutrientMetricTile: View {
             } else {
                 Text(metric.formattedValue)
                     .font(CalorynTheme.numericCaption)
-                    .foregroundStyle(metric.nutrient.color)
+                    .foregroundStyle(metric.accentColor)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
 
@@ -375,10 +142,10 @@ private struct NutrientMetricTile: View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
-                    .fill(metric.nutrient.color.opacity(0.15))
+                    .fill(metric.accentColor.opacity(0.15))
 
                 Capsule()
-                    .fill(metric.nutrient.color)
+                    .fill(metric.accentColor)
                     .frame(width: geo.size.width * metric.progress)
                     .animation(.smooth(duration: 0.5), value: metric.progress)
             }
@@ -560,9 +327,18 @@ private struct SelectedNutrientRow: View {
             FoodLogEntry(date: .now, mealType: .breakfast, foodItem: oatmeal, portionGrams: 80),
             FoodLogEntry(date: .now, mealType: .snack, foodItem: apple, portionGrams: 120)
         ],
-        proteinTarget: 120,
-        carbTarget: 200,
-        fatTarget: 65
+        nutrientTargets: [
+            .protein: 120,
+            .carbs: 200,
+            .fat: 65,
+            .fiber: 30
+        ],
+        nutrientGoalKinds: [
+            .protein: .minimum,
+            .carbs: .target,
+            .fat: .target,
+            .fiber: .minimum
+        ]
     )
     .padding()
 }

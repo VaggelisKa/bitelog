@@ -84,9 +84,8 @@ struct TodayView: View {
                         if let profile {
                             MacroProgressView(
                                 entries: todayEntries,
-                                proteinTarget: profile.proteinTargetG,
-                                carbTarget: profile.carbTargetG,
-                                fatTarget: profile.fatTargetG
+                                nutrientTargets: profile.nutrientTargets,
+                                nutrientGoalKinds: profile.nutrientGoalKinds
                             )
                             .padding(.horizontal, 4)
                         }
@@ -150,9 +149,8 @@ struct TodayView: View {
                     date: selectedDate,
                     entries: todayEntries,
                     calorieTarget: profile?.dailyCalorieTarget ?? 2000,
-                    proteinTarget: profile?.proteinTargetG ?? 0,
-                    carbTarget: profile?.carbTargetG ?? 0,
-                    fatTarget: profile?.fatTargetG ?? 0
+                    nutrientTargets: profile?.nutrientTargets ?? [:],
+                    nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)

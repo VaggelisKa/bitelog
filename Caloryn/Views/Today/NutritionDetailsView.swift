@@ -4,9 +4,8 @@ struct NutritionDetailsView: View {
     let date: Date
     let entries: [FoodLogEntry]
     let calorieTarget: Int
-    let proteinTarget: Double
-    let carbTarget: Double
-    let fatTarget: Double
+    let nutrientTargets: [TrackedNutrient: Double]
+    let nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind]
 
     @Environment(\.dismiss) private var dismiss
 
@@ -28,6 +27,10 @@ struct NutritionDetailsView: View {
 
     private var totalFiber: Double {
         entries.reduce(0) { $0 + $1.fiberG }
+    }
+
+    private var fiberMetric: TrackedNutrientMetric {
+        metric(for: .fiber, value: totalFiber)
     }
 
     private var calorieAccentColor: Color {
@@ -163,17 +166,19 @@ struct NutritionDetailsView: View {
             ],
             spacing: 10
         ) {
-            nutrientTile("Protein", value: totalProtein, target: proteinTarget, color: CalorynTheme.proteinColor)
-            nutrientTile("Carbs", value: totalCarbs, target: carbTarget, color: CalorynTheme.carbColor)
-            nutrientTile("Fat", value: totalFat, target: fatTarget, color: CalorynTheme.fatColor)
+            nutrientTile(.protein, value: totalProtein)
+            nutrientTile(.carbs, value: totalCarbs)
+            nutrientTile(.fat, value: totalFat)
         }
     }
 
     private var fiberFocus: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        let metric = fiberMetric
+
+        return VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
                 Image(systemName: "leaf")
-                    .foregroundStyle(CalorynTheme.fiberColor)
+                    .foregroundStyle(metric.accentColor)
 
                 Text("Fiber")
                     .font(CalorynTheme.itemTitle)
@@ -181,9 +186,15 @@ struct NutritionDetailsView: View {
 
                 Spacer()
 
-                Text(totalFiber.macroFormatted)
+                Text(metric.formattedTarget.map { "\(metric.formattedValue) / \($0)" } ?? metric.formattedValue)
                     .font(CalorynTheme.numericBody)
-                    .foregroundStyle(CalorynTheme.fiberColor)
+                    .foregroundStyle(metric.accentColor)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
+
+            if let target = metric.target, target > 0 {
+                progressBar(current: totalFiber, target: target, color: metric.accentColor)
             }
 
             if fiberSources.isEmpty {
@@ -317,21 +328,23 @@ struct NutritionDetailsView: View {
         }
     }
 
-    private func nutrientTile(_ label: String, value: Double, target: Double?, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(label)
+    private func nutrientTile(_ nutrient: TrackedNutrient, value: Double) -> some View {
+        let metric = metric(for: nutrient, value: value)
+
+        return VStack(alignment: .leading, spacing: 8) {
+            Text(nutrient.displayName)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
 
-            Text(value.macroFormatted)
+            Text(metric.formattedValue)
                 .font(CalorynTheme.numericBody)
-                .foregroundStyle(color)
+                .foregroundStyle(metric.accentColor)
                 .contentTransition(.numericText())
 
-            if let target, target > 0 {
-                progressBar(current: value, target: target, color: color)
+            if let target = metric.target, target > 0 {
+                progressBar(current: value, target: target, color: metric.accentColor)
 
-                Text("of \(target.macroFormatted)")
+                Text(metric.targetSummary ?? "of \(nutrient.unit.formatted(target))")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .lineLimit(1)
@@ -346,6 +359,15 @@ struct NutritionDetailsView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
         .accessibilityElement(children: .combine)
+    }
+
+    private func metric(for nutrient: TrackedNutrient, value: Double) -> TrackedNutrientMetric {
+        TrackedNutrientMetric(
+            nutrient: nutrient,
+            value: value,
+            target: nutrientTargets[nutrient],
+            goalKind: nutrientTargets[nutrient] == nil ? nil : nutrientGoalKinds[nutrient, default: nutrient.defaultGoalKind]
+        )
     }
 
     private func progressBar(current: Double, target: Double, color: Color) -> some View {
@@ -436,8 +458,17 @@ private struct DetailNutrient: Identifiable {
             FoodLogEntry(date: .now, mealType: .snack, foodItem: apple, portionGrams: 120)
         ],
         calorieTarget: 2000,
-        proteinTarget: 120,
-        carbTarget: 200,
-        fatTarget: 65
+        nutrientTargets: [
+            .protein: 120,
+            .carbs: 200,
+            .fat: 65,
+            .fiber: 30
+        ],
+        nutrientGoalKinds: [
+            .protein: .minimum,
+            .carbs: .target,
+            .fat: .target,
+            .fiber: .minimum
+        ]
     )
 }
