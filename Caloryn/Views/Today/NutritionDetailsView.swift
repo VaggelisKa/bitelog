@@ -242,23 +242,23 @@ struct NutritionDetailsView: View {
     @ViewBuilder
     private var detailSections: some View {
         if !proteinDetails.isEmpty {
-            detailSection("Protein Details", systemImage: "bolt", color: CalorynTheme.proteinColor, items: proteinDetails)
+            detailSection("Protein Details", systemImage: "dumbbell.fill", color: CalorynTheme.proteinColor, items: proteinDetails)
         }
 
         if !carbDetails.isEmpty {
-            detailSection("Carb Details", systemImage: "chart.bar.xaxis", color: CalorynTheme.carbColor, items: carbDetails)
+            detailSection("Carb Details", systemImage: "fork.knife", color: CalorynTheme.carbColor, items: carbDetails)
         }
 
         if !fatDetails.isEmpty {
-            detailSection("Fat Details", systemImage: "drop", color: CalorynTheme.fatColor, items: fatDetails)
+            detailSection("Fat Details", systemImage: "drop.fill", color: CalorynTheme.fatColor, items: fatDetails)
         }
 
         if !saltDetails.isEmpty {
-            detailSection("Salt", systemImage: "circle.grid.cross", color: CalorynTheme.stone, items: saltDetails)
+            detailSection("Salt", systemImage: "s.circle.fill", color: CalorynTheme.stone, items: saltDetails)
         }
 
         if !otherDetails.isEmpty {
-            detailSection("Other", systemImage: "ellipsis", color: CalorynTheme.textSecondary, items: otherDetails)
+            detailSection("Other", systemImage: "ellipsis.circle.fill", color: CalorynTheme.textSecondary, items: otherDetails)
         }
     }
 
