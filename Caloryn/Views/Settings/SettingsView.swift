@@ -1,6 +1,10 @@
 import SwiftUI
 import SwiftData
 
+private let nutrientGoalExpansionAnimation = Animation.smooth(duration: 0.24)
+private let nutrientGoalAnimationDuration: TimeInterval = 0.24
+private let nutrientGoalPickerHeight: CGFloat = 32
+
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
@@ -393,14 +397,6 @@ struct GoalEditView: View {
         .navigationBarTitleDisplayMode(.inline)
         .scrollDismissesKeyboard(.interactively)
         .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    focusedField = nil
-                }
-                .fontWeight(.semibold)
-            }
-
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
                     profile.manualOverride = manualOverride
@@ -433,7 +429,11 @@ struct GoalEditView: View {
     private func targetTextBinding(for nutrient: TrackedNutrient) -> Binding<String> {
         Binding(
             get: { nutrientTargetTexts[nutrient, default: ""] },
-            set: { nutrientTargetTexts[nutrient] = $0 }
+            set: { newValue in
+                let currentValue = nutrientTargetTexts[nutrient, default: ""]
+                guard currentValue != newValue else { return }
+                nutrientTargetTexts[nutrient] = newValue
+            }
         )
     }
 
@@ -488,13 +488,15 @@ private struct NutrientGoalEditRow: View {
     @Binding var goalKind: NutrientGoalKind
     let isInvalid: Bool
     @FocusState.Binding var focusedField: GoalEditFocus?
+    @State private var isGoalTypePickerRendered = false
+    @State private var isGoalTypePickerVisible = false
 
     private var hasValue: Bool {
         !targetText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: isGoalTypePickerVisible ? 8 : 0) {
             HStack(spacing: 10) {
                 Label(nutrient.displayName, systemImage: nutrient.systemImage)
                     .foregroundStyle(CalorynTheme.textPrimary)
@@ -518,18 +520,51 @@ private struct NutrientGoalEditRow: View {
                     .frame(width: 24, alignment: .leading)
             }
 
-            if hasValue {
+            if isGoalTypePickerRendered {
                 Picker("Goal type", selection: $goalKind) {
                     ForEach(NutrientGoalKind.allCases) { kind in
                         Text(kind.displayName).tag(kind)
                     }
                 }
                 .pickerStyle(.segmented)
+                .frame(height: isGoalTypePickerVisible ? nutrientGoalPickerHeight : 0, alignment: .top)
+                .opacity(isGoalTypePickerVisible ? 1 : 0)
+                .scaleEffect(y: isGoalTypePickerVisible ? 1 : 0.97, anchor: .top)
+                .clipped()
+                .allowsHitTesting(isGoalTypePickerVisible)
+                .accessibilityHidden(!isGoalTypePickerVisible)
                 .accessibilityLabel("\(nutrient.displayName) goal type")
             }
         }
         .padding(.vertical, 4)
-        .animation(.default, value: hasValue)
+        .onAppear {
+            isGoalTypePickerRendered = hasValue
+            isGoalTypePickerVisible = hasValue
+        }
+        .onChange(of: hasValue) { _, shouldShow in
+            updateGoalTypePickerVisibility(shouldShow)
+        }
+    }
+
+    private func updateGoalTypePickerVisibility(_ shouldShow: Bool) {
+        if shouldShow {
+            isGoalTypePickerRendered = true
+            DispatchQueue.main.async {
+                guard hasValue else { return }
+                withAnimation(nutrientGoalExpansionAnimation) {
+                    isGoalTypePickerVisible = true
+                }
+            }
+        } else {
+            withAnimation(nutrientGoalExpansionAnimation) {
+                isGoalTypePickerVisible = false
+            }
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + nutrientGoalAnimationDuration) {
+                guard !hasValue else { return }
+                isGoalTypePickerRendered = false
+            }
+        }
     }
 }
 

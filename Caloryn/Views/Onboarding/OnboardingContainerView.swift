@@ -1,12 +1,13 @@
 import SwiftUI
 import SwiftData
 
-enum OnboardingStep: Int, CaseIterable, Hashable {
+enum OnboardingStep: Hashable {
     case welcome
     case personalInfo
     case activityLevel
     case goalSummary
-    case macroRatios
+    case macroRatios(Int)
+    case nutrientSelection
 }
 
 struct OnboardingContainerView: View {
@@ -24,6 +25,7 @@ struct OnboardingContainerView: View {
     @State private var proteinRatio: Double = 0.30
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
+    @AppStorage("todayTrackedNutrients") private var selectedNutrientIDs = TrackedNutrient.defaultSelectionRaw
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -57,14 +59,22 @@ struct OnboardingContainerView: View {
                         calorieDeficit: $calorieDeficit
                     ) { target in
                         finalCalorieTarget = target
-                        path.append(.macroRatios)
+                        path.append(.macroRatios(target))
                     }
-                case .macroRatios:
+                case .macroRatios(let calorieTarget):
                     MacroRatioStepView(
-                        calorieTarget: finalCalorieTarget,
+                        calorieTarget: calorieTarget,
                         proteinRatio: $proteinRatio,
                         carbRatio: $carbRatio,
                         fatRatio: $fatRatio,
+                        primaryButtonTitle: "Continue"
+                    ) {
+                        finalCalorieTarget = calorieTarget
+                        path.append(.nutrientSelection)
+                    }
+                case .nutrientSelection:
+                    NutrientSelectionStepView(
+                        selectedNutrientIDs: $selectedNutrientIDs,
                         onComplete: saveProfile
                     )
                 }

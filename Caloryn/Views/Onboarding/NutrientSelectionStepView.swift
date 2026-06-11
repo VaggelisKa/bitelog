@@ -1,0 +1,175 @@
+import SwiftUI
+
+struct NutrientSelectionStepView: View {
+    @Binding var selectedNutrientIDs: String
+    var onComplete: () -> Void
+
+    private var selectedNutrients: [TrackedNutrient] {
+        TrackedNutrient.selected(from: selectedNutrientIDs)
+    }
+
+    private var selectedExtras: [TrackedNutrient] {
+        selectedNutrients.filter { !TrackedNutrient.defaultSelection.contains($0) }
+    }
+
+    private var optionalNutrientColumns: [GridItem] {
+        [
+            GridItem(.flexible(), spacing: 10),
+            GridItem(.flexible(), spacing: 10)
+        ]
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Text("Nutrients to Track")
+                        .font(CalorynTheme.sectionTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+
+                    Text("Choose what you want to track.")
+                        .font(CalorynTheme.bodyText)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 8)
+
+                coreMacroSection
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("ADDITIONAL NUTRIENTS")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+
+                    GlassEffectContainer(spacing: 10) {
+                        LazyVGrid(columns: optionalNutrientColumns, spacing: 10) {
+                            ForEach(TrackedNutrient.editableGoalNutrients) { nutrient in
+                                NutrientSelectionTile(
+                                    nutrient: nutrient,
+                                    isSelected: selectedNutrients.contains(nutrient)
+                                ) {
+                                    toggle(nutrient)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.bottom, 100)
+        }
+        .safeAreaInset(edge: .bottom) {
+            Button(action: onComplete) {
+                Text("Start Tracking")
+                    .font(.system(.headline, design: .rounded))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+            }
+            .buttonStyle(.glassProminent)
+            .tint(CalorynTheme.sage)
+            .padding(.horizontal, CalorynTheme.pagePadding)
+            .padding(.bottom, 16)
+        }
+        .onAppear(perform: ensureDefaultMacrosSelected)
+    }
+
+    private var coreMacroSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("CORE MACROS")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+
+            HStack(spacing: 10) {
+                ForEach(TrackedNutrient.defaultSelection) { nutrient in
+                    VStack(spacing: 8) {
+                        Image(systemName: nutrient.systemImage)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(nutrient.color)
+                            .frame(width: 28, height: 28)
+
+                        Text(nutrient.displayName)
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textPrimary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(nutrient.displayName) selected")
+                }
+            }
+        }
+    }
+
+    private func toggle(_ nutrient: TrackedNutrient) {
+        var extras = selectedExtras
+        if extras.contains(nutrient) {
+            extras.removeAll { $0 == nutrient }
+        } else {
+            extras.append(nutrient)
+        }
+
+        selectedNutrientIDs = TrackedNutrient.rawSelection(from: TrackedNutrient.defaultSelection + extras)
+    }
+
+    private func ensureDefaultMacrosSelected() {
+        selectedNutrientIDs = TrackedNutrient.rawSelection(from: TrackedNutrient.defaultSelection + selectedExtras)
+    }
+}
+
+private struct NutrientSelectionTile: View {
+    let nutrient: TrackedNutrient
+    let isSelected: Bool
+    var onToggle: () -> Void
+
+    private var contentForeground: Color {
+        isSelected ? CalorynTheme.warmWhite : CalorynTheme.textPrimary
+    }
+
+    private var iconForeground: Color {
+        isSelected ? CalorynTheme.warmWhite : nutrient.color
+    }
+
+    var body: some View {
+        Button(action: onToggle) {
+            ZStack(alignment: .topTrailing) {
+                VStack(spacing: 8) {
+                    Image(systemName: nutrient.systemImage)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(iconForeground)
+                        .frame(width: 28, height: 28)
+
+                    Text(nutrient.displayName)
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(contentForeground)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.72)
+                }
+                .frame(maxWidth: .infinity, minHeight: 74)
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(isSelected ? CalorynTheme.warmWhite : CalorynTheme.textSecondary)
+                    .padding(10)
+                    .accessibilityHidden(true)
+            }
+            .glassEffect(
+                isSelected ? .regular.tint(CalorynTheme.sage).interactive() : .regular.interactive(),
+                in: .rect(cornerRadius: CalorynTheme.smallCornerRadius)
+            )
+            .animation(.smooth(duration: 0.2), value: isSelected)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(nutrient.displayName), \(isSelected ? "selected" : "not selected")")
+    }
+}
+
+#Preview {
+    NavigationStack {
+        NutrientSelectionStepView(
+            selectedNutrientIDs: .constant(TrackedNutrient.defaultSelectionRaw)
+        ) { }
+    }
+}

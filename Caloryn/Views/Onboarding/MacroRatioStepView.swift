@@ -5,6 +5,7 @@ struct MacroRatioStepView: View {
     @Binding var proteinRatio: Double
     @Binding var carbRatio: Double
     @Binding var fatRatio: Double
+    var primaryButtonTitle = "Start Tracking"
     var onComplete: () -> Void
 
     private var total: Double { proteinRatio + carbRatio + fatRatio }
@@ -71,7 +72,7 @@ struct MacroRatioStepView: View {
         }
         .safeAreaInset(edge: .bottom) {
             Button(action: onComplete) {
-                Text("Start Tracking")
+                Text(primaryButtonTitle)
                     .font(.system(.headline, design: .rounded))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
