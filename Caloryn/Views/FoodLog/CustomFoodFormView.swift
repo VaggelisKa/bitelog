@@ -154,13 +154,13 @@ struct CustomFoodFormView: View {
 
             TextField("Food name (e.g. Nick's Pizza)", text: $name)
                 .font(CalorynTheme.bodyText)
-                .textFieldStyle(.roundedBorder)
+                .manualEntryInputField()
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .name)
 
             TextField("Brand (optional)", text: $brand)
                 .font(CalorynTheme.bodyText)
-                .textFieldStyle(.roundedBorder)
+                .manualEntryInputField()
                 .textInputAutocapitalization(.words)
                 .focused($focusedField, equals: .brand)
         }
@@ -340,7 +340,7 @@ struct CustomFoodFormView: View {
             TextField(placeholder, text: text)
                 .font(CalorynTheme.numericBody)
                 .keyboardType(.decimalPad)
-                .textFieldStyle(.roundedBorder)
+                .manualEntryInputField()
                 .focused($focusedField, equals: focus)
 
             Text(unit)
@@ -366,7 +366,7 @@ struct CustomFoodFormView: View {
                 TextField("100", text: $servingSizeGrams)
                     .font(CalorynTheme.numericBody)
                     .keyboardType(.decimalPad)
-                    .textFieldStyle(.roundedBorder)
+                    .manualEntryInputField()
                     .frame(width: 80)
                     .focused($focusedField, equals: .servingSize)
 
@@ -520,6 +520,16 @@ struct CustomFoodFormView: View {
             modelContext.delete(food)
         }
         dismiss()
+    }
+}
+
+private extension View {
+    func manualEntryInputField() -> some View {
+        self
+            .textFieldStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(.thinMaterial, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
     }
 }
 

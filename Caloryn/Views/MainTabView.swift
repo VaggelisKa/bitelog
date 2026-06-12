@@ -10,11 +10,15 @@ struct MainTabView: View {
                 TodayView()
             }
 
-            Tab("History", systemImage: "chart.bar.fill", value: 1) {
+            Tab("My Foods", systemImage: "fork.knife.circle.fill", value: 1) {
+                MyFoodsView()
+            }
+
+            Tab("History", systemImage: "chart.bar.fill", value: 2) {
                 HistoryView()
             }
 
-            Tab("Settings", systemImage: "gearshape.fill", value: 2) {
+            Tab("Settings", systemImage: "gearshape.fill", value: 3) {
                 SettingsView()
             }
         }
