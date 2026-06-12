@@ -131,12 +131,9 @@ struct RecipeFormView: View {
 
             TextField("Recipe name (e.g. Greek Salad)", text: $name)
                 .font(CalorynTheme.bodyText)
-                .textFieldStyle(.plain)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .background(.thinMaterial, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
                 .textInputAutocapitalization(.words)
                 .focused($isNameFocused)
+                .calorynInputField(isFocused: isNameFocused)
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
