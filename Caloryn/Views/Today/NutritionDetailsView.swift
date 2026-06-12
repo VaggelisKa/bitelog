@@ -13,45 +13,30 @@ struct NutritionDetailsView: View {
         entries.reduce(0) { $0 + $1.calories }
     }
 
-    private var totalProtein: Double {
-        entries.reduce(0) { $0 + $1.proteinG }
+    private var totalPortionGrams: Double {
+        entries.reduce(0) { $0 + $1.portionGrams }
     }
 
-    private var totalCarbs: Double {
-        entries.reduce(0) { $0 + $1.carbsG }
+    private var roundedCalories: Int {
+        Int(totalCalories.rounded())
     }
 
-    private var totalFat: Double {
-        entries.reduce(0) { $0 + $1.fatG }
+    private var remainingCalories: Int {
+        max(0, calorieTarget - roundedCalories)
     }
 
-    private var totalFiber: Double {
-        entries.reduce(0) { $0 + $1.fiberG }
-    }
-
-    private var fiberMetric: TrackedNutrientMetric {
-        metric(for: .fiber, value: totalFiber)
+    private var overCalories: Int {
+        max(0, roundedCalories - calorieTarget)
     }
 
     private var calorieAccentColor: Color {
         totalCalories > Double(calorieTarget) ? CalorynTheme.terracotta : CalorynTheme.sage
     }
 
-    private var fiberSources: [FoodLogEntry] {
-        Array(
-            entries
-                .filter { $0.fiberG > 0 }
-                .sorted { $0.fiberG > $1.fiberG }
-                .prefix(5)
-        )
-    }
-
-    private var totalSolubleFiber: Double? {
-        total(\.solubleFiberG)
-    }
-
-    private var totalInsolubleFiber: Double? {
-        total(\.insolubleFiberG)
+    private var allNutrientMetrics: [TrackedNutrientMetric] {
+        TrackedNutrient.allCases.map { nutrient in
+            metric(for: nutrient, value: nutrient.value(in: entries))
+        }
     }
 
     private var proteinDetails: [DetailNutrient] {
@@ -107,15 +92,14 @@ struct NutritionDetailsView: View {
             ScrollView {
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     calorieSummary
-                    fiberFocus
-                    macroGrid
+                    allStatsGrid
                     detailSections
                     dataQualityNote
                 }
                 .padding(.horizontal, CalorynTheme.pagePadding)
                 .padding(.vertical, CalorynTheme.cardSpacing)
             }
-            .navigationTitle(date.shortFormatted)
+            .navigationTitle("Nutrition Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -153,101 +137,97 @@ struct NutritionDetailsView: View {
                 target: Double(calorieTarget),
                 color: calorieAccentColor
             )
+
+            Divider()
+                .foregroundStyle(CalorynTheme.stone.opacity(0.3))
+
+            HStack(alignment: .top, spacing: 10) {
+                summaryStat(
+                    label: totalCalories > Double(calorieTarget) ? "Over" : "Remaining",
+                    value: "\(totalCalories > Double(calorieTarget) ? overCalories : remainingCalories)",
+                    detail: "kcal",
+                    color: calorieAccentColor
+                )
+
+                verticalDivider
+
+                summaryStat(
+                    label: "Logged",
+                    value: "\(entries.count)",
+                    detail: entries.count == 1 ? "item" : "items"
+                )
+
+                verticalDivider
+
+                summaryStat(
+                    label: "Food Weight",
+                    value: totalPortionGrams.macroFormatted,
+                    detail: "total"
+                )
+            }
         }
         .glassCard()
     }
 
-    private var macroGrid: some View {
-        LazyVGrid(
-            columns: [
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10)
-            ],
-            spacing: 10
-        ) {
-            nutrientTile(.protein, value: totalProtein)
-            nutrientTile(.carbs, value: totalCarbs)
-            nutrientTile(.fat, value: totalFat)
-        }
+    private var verticalDivider: some View {
+        Divider()
+            .foregroundStyle(CalorynTheme.stone.opacity(0.3))
+            .frame(height: 42)
     }
 
-    private var fiberFocus: some View {
-        let metric = fiberMetric
+    private func summaryStat(
+        label: String,
+        value: String,
+        detail: String,
+        color: Color = CalorynTheme.textPrimary
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(.caption2, design: .rounded, weight: .medium))
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
 
-        return VStack(alignment: .leading, spacing: 14) {
+            Text(value)
+                .font(CalorynTheme.numericBody)
+                .foregroundStyle(color)
+                .contentTransition(.numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+
+            Text(detail)
+                .font(.system(.caption2, design: .rounded))
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private var allStatsGrid: some View {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 8) {
-                Image(systemName: "leaf")
-                    .foregroundStyle(metric.accentColor)
+                Image(systemName: "chart.bar.fill")
+                    .foregroundStyle(CalorynTheme.sage)
 
-                Text("Fiber")
+                Text("All Stats")
                     .font(CalorynTheme.itemTitle)
                     .foregroundStyle(CalorynTheme.textPrimary)
-
-                Spacer()
-
-                Text(metric.formattedTarget.map { "\(metric.formattedValue) / \($0)" } ?? metric.formattedValue)
-                    .font(CalorynTheme.numericBody)
-                    .foregroundStyle(metric.accentColor)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.78)
             }
+            .padding(.horizontal, 4)
 
-            if let target = metric.target, target > 0 {
-                progressBar(current: totalFiber, target: target, color: metric.accentColor)
-            }
-
-            if fiberSources.isEmpty {
-                Text(entries.isEmpty ? "No foods logged for this day." : "No fiber logged for these foods.")
-                    .font(CalorynTheme.caption)
-                    .foregroundStyle(CalorynTheme.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            } else {
-                VStack(spacing: 0) {
-                    ForEach(fiberSources) { entry in
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(entry.foodName)
-                                    .font(CalorynTheme.bodyText)
-                                    .foregroundStyle(CalorynTheme.textPrimary)
-                                    .lineLimit(1)
-
-                                Text("\(Int(entry.portionGrams.rounded()))g")
-                                    .font(CalorynTheme.caption)
-                                    .foregroundStyle(CalorynTheme.textSecondary)
-                            }
-
-                            Spacer()
-
-                            Text(entry.fiberG.macroFormatted)
-                                .font(CalorynTheme.numericCaption)
-                                .foregroundStyle(CalorynTheme.fiberColor)
-                        }
-                        .padding(.vertical, 8)
-
-                        if entry.id != fiberSources.last?.id {
-                            Divider()
-                                .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-                        }
-                    }
+            LazyVGrid(
+                columns: [
+                    GridItem(.adaptive(minimum: 142), spacing: 10)
+                ],
+                spacing: 10
+            ) {
+                ForEach(allNutrientMetrics) { metric in
+                    nutrientTile(metric)
                 }
             }
-
-            if let totalSolubleFiber {
-                Divider()
-                    .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-
-                detailRow(label: "Soluble fiber", value: totalSolubleFiber.macroFormatted)
-            }
-
-            if let totalInsolubleFiber {
-                Divider()
-                    .foregroundStyle(CalorynTheme.stone.opacity(0.3))
-
-                detailRow(label: "Insoluble fiber", value: totalInsolubleFiber.macroFormatted)
-            }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     @ViewBuilder
@@ -328,13 +308,19 @@ struct NutritionDetailsView: View {
         }
     }
 
-    private func nutrientTile(_ nutrient: TrackedNutrient, value: Double) -> some View {
-        let metric = metric(for: nutrient, value: value)
+    private func nutrientTile(_ metric: TrackedNutrientMetric) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: metric.nutrient.systemImage)
+                    .font(.caption)
+                    .foregroundStyle(metric.accentColor)
 
-        return VStack(alignment: .leading, spacing: 8) {
-            Text(nutrient.displayName)
-                .font(CalorynTheme.caption)
-                .foregroundStyle(CalorynTheme.textSecondary)
+                Text(metric.nutrient.compactName)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+            }
 
             Text(metric.formattedValue)
                 .font(CalorynTheme.numericBody)
@@ -342,9 +328,9 @@ struct NutritionDetailsView: View {
                 .contentTransition(.numericText())
 
             if let target = metric.target, target > 0 {
-                progressBar(current: value, target: target, color: metric.accentColor)
+                progressBar(current: metric.value, target: target, color: metric.accentColor)
 
-                Text(metric.targetSummary ?? "of \(nutrient.unit.formatted(target))")
+                Text(metric.targetSummary ?? "of \(metric.nutrient.unit.formatted(target))")
                     .font(.system(.caption2, design: .rounded))
                     .foregroundStyle(CalorynTheme.textSecondary)
                     .lineLimit(1)
@@ -356,9 +342,10 @@ struct NutritionDetailsView: View {
             }
         }
         .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
         .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(metric.accessibilityLabel)
     }
 
     private func metric(for nutrient: TrackedNutrient, value: Double) -> TrackedNutrientMetric {
@@ -371,14 +358,16 @@ struct NutritionDetailsView: View {
     }
 
     private func progressBar(current: Double, target: Double, color: Color) -> some View {
-        GeometryReader { geo in
+        let progress = target > 0 ? min(max(current / target, 0), 1) : 0
+
+        return GeometryReader { geo in
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(color.opacity(0.15))
 
                 Capsule()
                     .fill(color)
-                    .frame(width: geo.size.width * min(current / target, 1))
+                    .frame(width: geo.size.width * progress)
             }
         }
         .frame(height: 7)

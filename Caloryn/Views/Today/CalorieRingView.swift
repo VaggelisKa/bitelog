@@ -92,10 +92,12 @@ struct CalorieRingView: View {
             ? "\(consumedDisplay) eaten, \(overAmount) calories over target of \(target)"
             : "\(consumedDisplay) eaten, \(remaining) remaining of \(target)"
         )
-        .accessibilityHint(onDetailsRequested == nil ? "" : "Long press to show nutrition details.")
+        .accessibilityHint(onDetailsRequested == nil ? "" : "Tap or long press to show nutrition details.")
+        .accessibilityAddTraits(onDetailsRequested == nil ? [] : .isButton)
         .accessibilityAction(named: Text("Show nutrition details")) {
             requestDetails()
         }
+        .onTapGesture(perform: requestDetails)
         .onLongPressGesture(
             minimumDuration: 0.45,
             maximumDistance: 24,
