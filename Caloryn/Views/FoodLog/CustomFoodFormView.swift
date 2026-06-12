@@ -16,13 +16,22 @@ struct CustomFoodFormView: View {
     @State private var carbsPerServing = ""
     @State private var fatPerServing = ""
     @State private var fiberPerServing = ""
+    @State private var sugarsPerServing = ""
+    @State private var addedSugarsPerServing = ""
+    @State private var saturatedFatPerServing = ""
+    @State private var sodiumPerServing = ""
+    @State private var cholesterolPerServing = ""
+    @State private var alcoholPerServing = ""
     @State private var servingSizeGrams = "100"
+    @State private var produceKind: ProduceKind = .unclassified
     @State private var showingDeleteConfirmation = false
 
     @FocusState private var focusedField: Field?
 
     private enum Field: Hashable {
-        case name, brand, calories, protein, carbs, fat, fiber, servingSize
+        case name, brand, calories, protein, carbs, fat, fiber
+        case sugars, addedSugars, saturatedFat, sodium, cholesterol, alcohol
+        case servingSize
     }
 
     private var isEditing: Bool { existingFood != nil }
@@ -31,6 +40,7 @@ struct CustomFoodFormView: View {
         !name.trimmingCharacters(in: .whitespaces).isEmpty
         && (parseDecimal(caloriesPerServing) ?? -1) >= 0
         && !caloriesPerServing.isEmpty
+        && optionalTrackedInputsAreValid
     }
 
     private var servingGrams: Double {
@@ -53,10 +63,28 @@ struct CustomFoodFormView: View {
         parseDecimal(fatPerServing) ?? 0
     }
 
+    private var optionalTrackedInputsAreValid: Bool {
+        [
+            fiberPerServing,
+            sugarsPerServing,
+            addedSugarsPerServing,
+            saturatedFatPerServing,
+            sodiumPerServing,
+            cholesterolPerServing,
+            alcoholPerServing
+        ].allSatisfy(isOptionalNonnegativeDecimal(_:))
+    }
+
     /// Parses decimal strings, supporting both "." and "," as decimal separators (locale-agnostic).
     private func parseDecimal(_ string: String) -> Double? {
         let normalized = string.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
         return Double(normalized)
+    }
+
+    private func isOptionalNonnegativeDecimal(_ string: String) -> Bool {
+        let trimmed = string.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return true }
+        return (parseDecimal(trimmed) ?? -1) >= 0
     }
 
     init(existingFood: FoodItem? = nil, onSaved: ((FoodItem) -> Void)? = nil, allowsDeletion: Bool = true) {
@@ -71,9 +99,13 @@ struct CustomFoodFormView: View {
                 VStack(spacing: 24) {
                     nameSection
 
+                    produceTrackingSection
+
                     caloriePreviewCard
 
                     nutritionSection
+
+                    optionalNutritionSection
 
                     servingSizeSection
 
@@ -135,6 +167,31 @@ struct CustomFoodFormView: View {
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
+    private var produceTrackingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("FRUIT & VEG VARIETY")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+
+            HStack {
+                Text("Count as")
+                    .font(CalorynTheme.bodyText)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Spacer()
+            }
+
+            Picker("Count as", selection: $produceKind) {
+                ForEach(ProduceKind.manualCases) { kind in
+                    Text(kind.displayName)
+                        .tag(kind)
+                }
+            }
+            .pickerStyle(.segmented)
+        }
+        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+    }
+
     private var caloriePreviewCard: some View {
         VStack(spacing: 4) {
             Text("\(Int(previewCalories))")
@@ -186,12 +243,74 @@ struct CustomFoodFormView: View {
                 unit: "g",
                 focus: .fat
             )
+        }
+        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+    }
+
+    private var optionalNutritionSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("OPTIONAL STATS PER SERVING")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+
+            Text("Leave unknown values blank.")
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
 
             nutritionField(
                 label: "Fiber",
                 text: $fiberPerServing,
                 unit: "g",
-                focus: .fiber
+                focus: .fiber,
+                placeholder: ""
+            )
+
+            nutritionField(
+                label: "Sugars",
+                text: $sugarsPerServing,
+                unit: "g",
+                focus: .sugars,
+                placeholder: ""
+            )
+
+            nutritionField(
+                label: "Added Sugar",
+                text: $addedSugarsPerServing,
+                unit: "g",
+                focus: .addedSugars,
+                placeholder: ""
+            )
+
+            nutritionField(
+                label: "Sat Fat",
+                text: $saturatedFatPerServing,
+                unit: "g",
+                focus: .saturatedFat,
+                placeholder: ""
+            )
+
+            nutritionField(
+                label: "Sodium",
+                text: $sodiumPerServing,
+                unit: "mg",
+                focus: .sodium,
+                placeholder: ""
+            )
+
+            nutritionField(
+                label: "Cholesterol",
+                text: $cholesterolPerServing,
+                unit: "mg",
+                focus: .cholesterol,
+                placeholder: ""
+            )
+
+            nutritionField(
+                label: "Alcohol",
+                text: $alcoholPerServing,
+                unit: "g",
+                focus: .alcohol,
+                placeholder: ""
             )
         }
         .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
@@ -202,7 +321,8 @@ struct CustomFoodFormView: View {
         text: Binding<String>,
         unit: String,
         focus: Field,
-        required: Bool = false
+        required: Bool = false,
+        placeholder: String = "0"
     ) -> some View {
         HStack {
             HStack(spacing: 4) {
@@ -215,9 +335,9 @@ struct CustomFoodFormView: View {
                         .foregroundStyle(CalorynTheme.terracotta)
                 }
             }
-            .frame(width: 80, alignment: .leading)
+            .frame(width: 112, alignment: .leading)
 
-            TextField("0", text: text)
+            TextField(placeholder, text: text)
                 .font(CalorynTheme.numericBody)
                 .keyboardType(.decimalPad)
                 .textFieldStyle(.roundedBorder)
@@ -226,7 +346,7 @@ struct CustomFoodFormView: View {
             Text(unit)
                 .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textSecondary)
-                .frame(width: 36, alignment: .leading)
+                .frame(width: 44, alignment: .leading)
         }
     }
 
@@ -292,7 +412,14 @@ struct CustomFoodFormView: View {
         proteinPerServing = String(format: "%.1f", food.protein(forGrams: serving))
         carbsPerServing = String(format: "%.1f", food.carbs(forGrams: serving))
         fatPerServing = String(format: "%.1f", food.fat(forGrams: serving))
-        fiberPerServing = String(format: "%.1f", food.fiber(forGrams: serving))
+        fiberPerServing = food.fiber(forGrams: serving).manualInputFormatted
+        sugarsPerServing = optionalPerServingText(food.sugarsPer100g, serving: serving)
+        addedSugarsPerServing = optionalPerServingText(food.addedSugarsPer100g, serving: serving)
+        saturatedFatPerServing = optionalPerServingText(food.saturatedFatPer100g, serving: serving)
+        sodiumPerServing = optionalPerServingText(food.sodiumPer100g, serving: serving, unit: .milligramsFromGrams)
+        cholesterolPerServing = optionalPerServingText(food.cholesterolPer100g, serving: serving, unit: .milligramsFromGrams)
+        alcoholPerServing = optionalPerServingText(food.alcoholPer100g, serving: serving)
+        produceKind = food.produceKind
     }
 
     private func saveFood() {
@@ -302,6 +429,12 @@ struct CustomFoodFormView: View {
         let carb = parseDecimal(carbsPerServing) ?? 0
         let f = parseDecimal(fatPerServing) ?? 0
         let fiber = parseDecimal(fiberPerServing) ?? 0
+        let sugarsPer100 = optionalPer100g(sugarsPerServing, serving: serving)
+        let addedSugarsPer100 = optionalPer100g(addedSugarsPerServing, serving: serving)
+        let saturatedFatPer100 = optionalPer100g(saturatedFatPerServing, serving: serving)
+        let sodiumPer100 = optionalPer100g(sodiumPerServing, serving: serving, unit: .milligramsFromGrams)
+        let cholesterolPer100 = optionalPer100g(cholesterolPerServing, serving: serving, unit: .milligramsFromGrams)
+        let alcoholPer100 = optionalPer100g(alcoholPerServing, serving: serving)
 
         let calPer100 = cal / serving * 100
         let proPer100 = pro / serving * 100
@@ -317,8 +450,16 @@ struct CustomFoodFormView: View {
             food.carbsPer100g = carbPer100
             food.fatPer100g = fPer100
             food.fiberPer100g = fiberPer100
+            food.sugarsPer100g = sugarsPer100
+            food.addedSugarsPer100g = addedSugarsPer100
+            food.saturatedFatPer100g = saturatedFatPer100
+            food.sodiumPer100g = sodiumPer100
+            food.cholesterolPer100g = cholesterolPer100
+            food.alcoholPer100g = alcoholPer100
             food.defaultServingG = serving
             food.servingDescription = nil
+            food.categoryTags = []
+            food.produceKind = produceKind
             try? modelContext.save()
             onSaved?(food)
         } else {
@@ -330,7 +471,14 @@ struct CustomFoodFormView: View {
                 carbsPer100g: carbPer100,
                 fatPer100g: fPer100,
                 fiberPer100g: fiberPer100,
+                sugarsPer100g: sugarsPer100,
+                addedSugarsPer100g: addedSugarsPer100,
+                saturatedFatPer100g: saturatedFatPer100,
+                sodiumPer100g: sodiumPer100,
+                cholesterolPer100g: cholesterolPer100,
+                alcoholPer100g: alcoholPer100,
                 defaultServingG: serving,
+                produceKind: produceKind,
                 isCustom: true
             )
             modelContext.insert(food)
@@ -340,11 +488,48 @@ struct CustomFoodFormView: View {
         dismiss()
     }
 
+    private func optionalPer100g(
+        _ text: String,
+        serving: Double,
+        unit: TrackedNutrientUnit = .grams
+    ) -> Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty, let inputValue = parseDecimal(trimmed) else { return nil }
+        let storedValue = unit.storedValue(fromInput: inputValue)
+        return storedValue / serving * 100
+    }
+
+    private func optionalPerServingText(
+        _ valuePer100g: Double?,
+        serving: Double,
+        unit: TrackedNutrientUnit = .grams
+    ) -> String {
+        guard let valuePer100g else { return "" }
+        let storedValue = valuePer100g * serving / 100
+
+        switch unit {
+        case .grams:
+            return storedValue.manualInputFormatted
+        case .milligramsFromGrams:
+            return (storedValue * 1000).manualInputFormatted
+        }
+    }
+
     private func deleteFood() {
         if let food = existingFood {
             modelContext.delete(food)
         }
         dismiss()
+    }
+}
+
+private extension Double {
+    var manualInputFormatted: String {
+        let rounded = (self * 10).rounded() / 10
+        if rounded == rounded.rounded() {
+            return "\(Int(rounded))"
+        }
+        return String(format: "%.1f", rounded)
     }
 }
 

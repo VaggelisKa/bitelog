@@ -377,7 +377,8 @@ struct RecipeFormView: View {
                 caseinPer100g: draft.caseinPer100g,
                 serumProteinsPer100g: draft.serumProteinsPer100g,
                 alcoholPer100g: draft.alcoholPer100g,
-                sortOrder: index
+                sortOrder: index,
+                produceKind: draft.produceKind
             )
             ingredient.recipe = recipe
             modelContext.insert(ingredient)

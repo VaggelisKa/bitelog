@@ -38,6 +38,7 @@ final class RecipeIngredient {
     var caseinPer100g: Double?
     var serumProteinsPer100g: Double?
     var alcoholPer100g: Double?
+    var produceKindRaw: String?
 
     var sortOrder: Int = 0
     var createdAt: Date = Date()
@@ -78,7 +79,8 @@ final class RecipeIngredient {
         caseinPer100g: Double? = nil,
         serumProteinsPer100g: Double? = nil,
         alcoholPer100g: Double? = nil,
-        sortOrder: Int
+        sortOrder: Int,
+        produceKind: ProduceKind = .unclassified
     ) {
         self.id = UUID()
         self.name = name
@@ -115,6 +117,7 @@ final class RecipeIngredient {
         self.serumProteinsPer100g = serumProteinsPer100g
         self.alcoholPer100g = alcoholPer100g
         self.sortOrder = sortOrder
+        self.produceKindRaw = produceKind.rawValue
         self.createdAt = Date()
     }
 
@@ -153,8 +156,18 @@ final class RecipeIngredient {
             caseinPer100g: foodItem.caseinPer100g,
             serumProteinsPer100g: foodItem.serumProteinsPer100g,
             alcoholPer100g: foodItem.alcoholPer100g,
-            sortOrder: sortOrder
+            sortOrder: sortOrder,
+            produceKind: foodItem.produceKind
         )
+    }
+
+    var produceKind: ProduceKind {
+        get {
+            ProduceKind(rawValue: produceKindRaw ?? "") ?? .unclassified
+        }
+        set {
+            produceKindRaw = newValue.rawValue
+        }
     }
 
     var calories: Double {

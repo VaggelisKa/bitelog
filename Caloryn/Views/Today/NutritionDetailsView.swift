@@ -39,6 +39,10 @@ struct NutritionDetailsView: View {
         }
     }
 
+    private var produceSummary: ProduceVarietySummary {
+        ProduceVarietySummary(entries: entries)
+    }
+
     private var proteinDetails: [DetailNutrient] {
         [
             detail("casein", "Casein", \.caseinG),
@@ -48,8 +52,6 @@ struct NutritionDetailsView: View {
 
     private var carbDetails: [DetailNutrient] {
         [
-            detail("sugars", "Sugars", \.sugarsG),
-            detail("added-sugars", "Added sugars", \.addedSugarsG),
             detail("sucrose", "Sucrose", \.sucroseG),
             detail("glucose", "Glucose", \.glucoseG),
             detail("fructose", "Fructose", \.fructoseG),
@@ -63,27 +65,18 @@ struct NutritionDetailsView: View {
 
     private var fatDetails: [DetailNutrient] {
         [
-            detail("saturated-fat", "Saturated fat", \.saturatedFatG),
             detail("trans-fat", "Trans fat", \.transFatG),
             detail("monounsaturated-fat", "Monounsaturated", \.monounsaturatedFatG),
             detail("polyunsaturated-fat", "Polyunsaturated", \.polyunsaturatedFatG),
             detail("omega-3-fat", "Omega-3 fat", \.omega3FatG),
             detail("omega-6-fat", "Omega-6 fat", \.omega6FatG),
-            detail("omega-9-fat", "Omega-9 fat", \.omega9FatG),
-            detail("cholesterol", "Cholesterol", \.cholesterolG, unit: .milligramsFromGrams)
+            detail("omega-9-fat", "Omega-9 fat", \.omega9FatG)
         ].compactMap { $0 }
     }
 
     private var saltDetails: [DetailNutrient] {
         [
-            detail("salt", "Salt", \.saltG),
-            detail("sodium", "Sodium", \.sodiumG, unit: .milligramsFromGrams)
-        ].compactMap { $0 }
-    }
-
-    private var otherDetails: [DetailNutrient] {
-        [
-            detail("alcohol", "Alcohol", \.alcoholG)
+            detail("salt", "Salt equivalent", \.saltG)
         ].compactMap { $0 }
     }
 
@@ -92,6 +85,7 @@ struct NutritionDetailsView: View {
             ScrollView {
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     calorieSummary
+                    produceVarietyCard
                     allStatsGrid
                     detailSections
                     dataQualityNote
@@ -167,6 +161,63 @@ struct NutritionDetailsView: View {
             }
         }
         .glassCard()
+    }
+
+    private var produceVarietyCard: some View {
+        let summary = produceSummary
+        let countColor = summary.totalCount > 0 ? CalorynTheme.fiberColor : CalorynTheme.textSecondary
+
+        return HStack(alignment: .center, spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(CalorynTheme.fiberColor.opacity(0.16))
+
+                Image(systemName: "carrot.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(CalorynTheme.fiberColor)
+            }
+            .frame(width: 42, height: 42)
+            .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Fruit & veg variety")
+                    .font(CalorynTheme.itemTitle)
+                    .foregroundStyle(CalorynTheme.textPrimary)
+
+                Text(summary.breakdownText)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.textSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+
+                if let preview = summary.previewText {
+                    Text(preview)
+                        .font(.system(.caption2, design: .rounded))
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                }
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 2) {
+                Text("\(summary.totalCount)")
+                    .font(.system(.title2, design: .rounded, weight: .bold))
+                    .foregroundStyle(countColor)
+                    .contentTransition(.numericText())
+
+                Text("unique")
+                    .font(.system(.caption2, design: .rounded, weight: .medium))
+                    .foregroundStyle(CalorynTheme.textSecondary)
+            }
+            .accessibilityHidden(true)
+        }
+        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "Fruit and veg variety, \(summary.totalCount) unique, \(summary.breakdownText)"
+        )
     }
 
     private var verticalDivider: some View {
@@ -247,10 +298,6 @@ struct NutritionDetailsView: View {
         if !saltDetails.isEmpty {
             detailSection("Salt", systemImage: "s.circle.fill", color: CalorynTheme.stone, items: saltDetails)
         }
-
-        if !otherDetails.isEmpty {
-            detailSection("Other", systemImage: "ellipsis.circle.fill", color: CalorynTheme.textSecondary, items: otherDetails)
-        }
     }
 
     private var dataQualityNote: some View {
@@ -269,20 +316,21 @@ struct NutritionDetailsView: View {
     }
 
     private func detailSection(_ title: String, systemImage: String, color: Color, items: [DetailNutrient]) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Image(systemName: systemImage)
+                    .font(.caption)
                     .foregroundStyle(color)
 
                 Text(title)
-                    .font(CalorynTheme.itemTitle)
+                    .font(CalorynTheme.caption)
                     .foregroundStyle(CalorynTheme.textPrimary)
             }
 
             VStack(spacing: 0) {
                 ForEach(items) { item in
                     detailRow(label: item.label, value: formattedDetailValue(item))
-                        .padding(.vertical, 7)
+                        .padding(.vertical, 5)
 
                     if item.id != items.last?.id {
                         Divider()
@@ -291,21 +339,24 @@ struct NutritionDetailsView: View {
                 }
             }
         }
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
     }
 
     private func detailRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
-                .font(CalorynTheme.bodyText)
+                .font(CalorynTheme.caption)
                 .foregroundStyle(CalorynTheme.textPrimary)
 
             Spacer()
 
             Text(value)
-                .font(CalorynTheme.numericBody)
+                .font(CalorynTheme.numericCaption)
                 .foregroundStyle(CalorynTheme.textSecondary)
         }
+        .accessibilityElement(children: .combine)
     }
 
     private func nutrientTile(_ metric: TrackedNutrientMetric) -> some View {
@@ -438,7 +489,8 @@ private struct DetailNutrient: Identifiable {
         sugarsPer100g: 10.4,
         glucosePer100g: 2.4,
         fructosePer100g: 5.9,
-        insolubleFiberPer100g: 1.8
+        insolubleFiberPer100g: 1.8,
+        produceKind: .fruit
     )
     NutritionDetailsView(
         date: .now,

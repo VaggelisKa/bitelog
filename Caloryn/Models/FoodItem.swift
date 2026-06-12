@@ -1,6 +1,138 @@
 import Foundation
 import SwiftData
 
+enum ProduceKind: String, Codable, CaseIterable, Hashable, Identifiable {
+    case unclassified
+    case fruit
+    case vegetable
+
+    nonisolated var id: String { rawValue }
+
+    static let manualCases: [ProduceKind] = [.unclassified, .fruit, .vegetable]
+
+    nonisolated var displayName: String {
+        switch self {
+        case .unclassified:
+            "Not counted"
+        case .fruit:
+            "Fruit"
+        case .vegetable:
+            "Veg"
+        }
+    }
+
+    nonisolated var fullDisplayName: String {
+        switch self {
+        case .unclassified:
+            "Not counted"
+        case .fruit:
+            "Fruit"
+        case .vegetable:
+            "Vegetable"
+        }
+    }
+
+    nonisolated var countsTowardVariety: Bool {
+        self != .unclassified
+    }
+
+    nonisolated static func inferred(fromCategoryTags tags: [String]) -> ProduceKind {
+        let normalizedTags = Set(tags.map(normalizedTag(_:)))
+        guard !normalizedTags.isEmpty else { return .unclassified }
+        guard normalizedTags.isDisjoint(with: excludedProcessedTags) else { return .unclassified }
+
+        let matchesFruit = !normalizedTags.isDisjoint(with: fruitTags)
+        let matchesVegetable = !normalizedTags.isDisjoint(with: vegetableTags)
+
+        switch (matchesFruit, matchesVegetable) {
+        case (true, false):
+            return .fruit
+        case (false, true):
+            return .vegetable
+        default:
+            return .unclassified
+        }
+    }
+
+    nonisolated private static func normalizedTag(_ tag: String) -> String {
+        tag
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+    }
+
+    nonisolated private static let excludedProcessedTags: Set<String> = [
+        "en:biscuits-and-cakes",
+        "en:cakes",
+        "en:chips-and-fries",
+        "en:crisps",
+        "en:desserts",
+        "en:french-fries",
+        "en:fruit-juices",
+        "en:jams",
+        "en:juices",
+        "en:pies",
+        "en:pizzas",
+        "en:potato-crisps",
+        "en:ready-meals",
+        "en:sauces",
+        "en:smoothies",
+        "en:soups",
+        "en:vegetable-juices",
+        "en:yogurts"
+    ]
+
+    nonisolated private static let fruitTags: Set<String> = [
+        "en:apples",
+        "en:avocados",
+        "en:bananas",
+        "en:berries",
+        "en:blackberries",
+        "en:blueberries",
+        "en:citrus-fruits",
+        "en:dried-fruits",
+        "en:fresh-fruits",
+        "en:frozen-fruits",
+        "en:fruits",
+        "en:grapes",
+        "en:kiwifruits",
+        "en:lemons",
+        "en:limes",
+        "en:mangoes",
+        "en:melons",
+        "en:nectarines",
+        "en:oranges",
+        "en:peaches",
+        "en:pears",
+        "en:pineapples",
+        "en:plums",
+        "en:raspberries",
+        "en:strawberries",
+        "en:tropical-fruits",
+        "en:watermelons"
+    ]
+
+    nonisolated private static let vegetableTags: Set<String> = [
+        "en:broccoli",
+        "en:cabbages",
+        "en:carrots",
+        "en:cauliflowers",
+        "en:cucumbers",
+        "en:fresh-vegetables",
+        "en:frozen-vegetables",
+        "en:garlic",
+        "en:leaf-vegetables",
+        "en:lettuces",
+        "en:mushrooms",
+        "en:onions",
+        "en:peppers",
+        "en:root-vegetables",
+        "en:salads",
+        "en:spinaches",
+        "en:tomatoes",
+        "en:vegetables"
+    ]
+}
+
 @Model
 final class FoodItem {
     var id: UUID = UUID()
@@ -40,6 +172,8 @@ final class FoodItem {
     var alcoholPer100g: Double?
 
     var nutriscoreGrade: String?
+    var categoryTagsRaw: String?
+    var produceKindRaw: String?
 
     var defaultServingG: Double?
     var servingDescription: String?
@@ -92,6 +226,8 @@ final class FoodItem {
         defaultServingG: Double? = nil,
         servingDescription: String? = nil,
         nutriscoreGrade: String? = nil,
+        categoryTags: [String] = [],
+        produceKind: ProduceKind? = nil,
         isCustom: Bool = false,
         isRecipe: Bool = false
     ) {
@@ -132,9 +268,29 @@ final class FoodItem {
         self.defaultServingG = defaultServingG
         self.servingDescription = servingDescription
         self.nutriscoreGrade = nutriscoreGrade
+        self.categoryTagsRaw = Self.rawCategoryTags(from: categoryTags)
+        self.produceKindRaw = (produceKind ?? ProduceKind.inferred(fromCategoryTags: categoryTags)).rawValue
         self.isCustom = isCustom
         self.isRecipe = isRecipe
         self.lastUsed = Date()
+    }
+
+    var categoryTags: [String] {
+        get {
+            Self.categoryTags(fromRaw: categoryTagsRaw)
+        }
+        set {
+            categoryTagsRaw = Self.rawCategoryTags(from: newValue)
+        }
+    }
+
+    var produceKind: ProduceKind {
+        get {
+            ProduceKind(rawValue: produceKindRaw ?? "") ?? .unclassified
+        }
+        set {
+            produceKindRaw = newValue.rawValue
+        }
     }
 
     func calories(forGrams grams: Double) -> Double {
@@ -220,6 +376,8 @@ final class FoodItem {
             alcoholPer100g = nil
             defaultServingG = nil
             servingDescription = nil
+            categoryTagsRaw = nil
+            produceKind = .unclassified
             return
         }
 
@@ -258,6 +416,8 @@ final class FoodItem {
         isRecipe = true
         isCustom = false
         nutriscoreGrade = nil
+        categoryTagsRaw = nil
+        produceKind = .unclassified
     }
 
     private func scaled(_ value: Double?, forGrams grams: Double) -> Double? {
@@ -267,6 +427,22 @@ final class FoodItem {
     private func aggregatePer100g(_ values: [Double?], totalGrams: Double) -> Double? {
         guard values.contains(where: { $0 != nil }) else { return nil }
         return values.reduce(0) { $0 + ($1 ?? 0) } / totalGrams * 100
+    }
+
+    private static func categoryTags(fromRaw rawValue: String?) -> [String] {
+        rawValue?
+            .split(separator: ",")
+            .map { String($0) }
+            .filter { !$0.isEmpty } ?? []
+    }
+
+    private static func rawCategoryTags(from tags: [String]) -> String? {
+        let normalizedTags = tags
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            .filter { !$0.isEmpty }
+
+        guard !normalizedTags.isEmpty else { return nil }
+        return normalizedTags.joined(separator: ",")
     }
 
     var servingInfo: ServingInfo? {

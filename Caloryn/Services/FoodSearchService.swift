@@ -23,6 +23,7 @@ final class FoodSearchService {
         "quantity",
         "nutriments",
         "nutrition_grades",
+        "categories_tags",
         "lang",
         "countries_tags"
     ].joined(separator: ",")
@@ -117,7 +118,8 @@ final class FoodSearchService {
             alcoholPer100g: nutriments?.alcohol100g,
             defaultServingG: defaultServingG,
             servingDescription: servingDescription,
-            nutriscoreGrade: Self.validNutriscoreGrade(product.nutritionGrades)
+            nutriscoreGrade: Self.validNutriscoreGrade(product.nutritionGrades),
+            categoryTags: product.categoryTags ?? []
         )
     }
 
@@ -200,6 +202,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
     let quantity: String?
     let nutriments: OFFNutriments?
     let nutritionGrades: String?
+    let categoryTags: [String]?
     let lang: String?
     let countriesTags: [String]?
 
@@ -262,6 +265,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         case quantity
         case nutriments
         case nutritionGrades = "nutrition_grades"
+        case categoryTags = "categories_tags"
         case lang
         case countriesTags = "countries_tags"
     }
@@ -276,6 +280,7 @@ struct OpenFoodFactsProduct: Decodable, Identifiable, Hashable {
         quantity = try container.decodeIfPresent(String.self, forKey: .quantity)
         nutriments = try container.decodeIfPresent(OFFNutriments.self, forKey: .nutriments)
         nutritionGrades = try container.decodeIfPresent(String.self, forKey: .nutritionGrades)
+        categoryTags = try container.decodeIfPresent([String].self, forKey: .categoryTags)
         lang = try container.decodeIfPresent(String.self, forKey: .lang)
         countriesTags = try container.decodeIfPresent([String].self, forKey: .countriesTags)
 
