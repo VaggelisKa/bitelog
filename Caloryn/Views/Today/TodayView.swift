@@ -13,9 +13,25 @@ struct TodayView: View {
     @State private var selectedSnackIndex: Int = 1
 
     @AppStorage("showNutriscore") private var showNutriscore = true
+    @AppStorage(HealthSettingsKeys.adjustmentEnabled) private var appleHealthAdjustmentEnabled = false
+    @State private var activeEnergyKcal: Double = 0
+    @State private var isLoadingActiveEnergy = false
+    @State private var healthEnergyMessage: String?
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
+    private var baseCalorieTarget: Int { profile?.dailyCalorieTarget ?? 2000 }
+    private var activeEnergyCredit: Int { HealthCalorieAdjustment.creditedCalories(from: activeEnergyKcal) }
+    private var displayedCalorieTarget: Int {
+        HealthCalorieAdjustment.adjustedTarget(
+            baseTarget: baseCalorieTarget,
+            activeEnergyKcal: activeEnergyKcal,
+            isEnabled: appleHealthAdjustmentEnabled
+        )
+    }
+    private var healthRefreshKey: String {
+        "\(selectedDate.timeIntervalSinceReferenceDate)-\(appleHealthAdjustmentEnabled)"
+    }
 
     private var todayEntries: [FoodLogEntry] {
         allEntries.filter { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }
@@ -73,12 +89,24 @@ struct TodayView: View {
                     VStack(spacing: CalorynTheme.cardSpacing) {
                         CalorieRingView(
                             consumed: totalCalories,
-                            target: profile?.dailyCalorieTarget ?? 2000,
+                            target: displayedCalorieTarget,
                             ringSize: ringSize
                         ) {
                             withAnimation(.smooth(duration: 0.2)) {
                                 showingNutritionDetails = true
                             }
+                        }
+
+                        if appleHealthAdjustmentEnabled {
+                            HealthAdjustmentSummaryView(
+                                baseTarget: baseCalorieTarget,
+                                activeEnergyKcal: activeEnergyKcal,
+                                creditedCalories: activeEnergyCredit,
+                                adjustedTarget: displayedCalorieTarget,
+                                isLoading: isLoadingActiveEnergy,
+                                message: healthEnergyMessage
+                            )
+                            .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
                         }
 
                         if showNutriscore, hasNutriscoreData {
@@ -139,13 +167,16 @@ struct TodayView: View {
                 NutritionDetailsView(
                     date: selectedDate,
                     entries: todayEntries,
-                    calorieTarget: profile?.dailyCalorieTarget ?? 2000,
+                    calorieTarget: displayedCalorieTarget,
                     nutrientTargets: profile?.nutrientTargets ?? [:],
                     nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
             }
+        }
+        .task(id: healthRefreshKey) {
+            await refreshActiveEnergy()
         }
     }
 
@@ -238,6 +269,113 @@ struct TodayView: View {
             )
             modelContext.insert(newEntry)
         }
+    }
+
+    @MainActor
+    private func refreshActiveEnergy() async {
+        guard appleHealthAdjustmentEnabled else {
+            activeEnergyKcal = 0
+            healthEnergyMessage = nil
+            return
+        }
+
+        guard HealthKitService.isHealthDataAvailable else {
+            activeEnergyKcal = 0
+            healthEnergyMessage = "Apple Health is not available on this device."
+            return
+        }
+
+        isLoadingActiveEnergy = true
+        healthEnergyMessage = nil
+        defer {
+            isLoadingActiveEnergy = false
+        }
+
+        do {
+            let kcal = try await HealthKitService.activeEnergyBurnedKcal(for: selectedDate)
+            if activeEnergyKcal != kcal {
+                activeEnergyKcal = kcal
+            }
+            healthEnergyMessage = nil
+        } catch {
+            activeEnergyKcal = 0
+            healthEnergyMessage = error.localizedDescription
+        }
+    }
+}
+
+private struct HealthAdjustmentSummaryView: View {
+    let baseTarget: Int
+    let activeEnergyKcal: Double
+    let creditedCalories: Int
+    let adjustedTarget: Int
+    let isLoading: Bool
+    let message: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "heart.text.square.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(CalorynTheme.sage)
+                    .frame(width: 28, height: 28)
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Apple Health")
+                        .font(CalorynTheme.itemTitle)
+                        .foregroundStyle(CalorynTheme.textPrimary)
+
+                    Text("Active Energy credit")
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.textSecondary)
+                }
+
+                Spacer(minLength: 0)
+
+                HStack(spacing: 8) {
+                    if isLoading {
+                        ProgressView()
+                    }
+
+                    Text("+\(creditedCalories.kcalFormatted)")
+                        .font(CalorynTheme.numericBody)
+                        .foregroundStyle(CalorynTheme.sage)
+                        .contentTransition(.numericText())
+                }
+            }
+
+            HStack(spacing: 14) {
+                healthMetric("Base", value: baseTarget.kcalFormatted)
+                healthMetric("Active", value: activeEnergyKcal.kcalFormatted)
+                healthMetric("Today", value: adjustedTarget.kcalFormatted)
+            }
+
+            if let message {
+                Text(message)
+                    .font(CalorynTheme.caption)
+                    .foregroundStyle(CalorynTheme.terracotta)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Apple Health adjustment, \(activeEnergyKcal.kcalFormatted) active energy, \(creditedCalories.kcalFormatted) credited, \(adjustedTarget.kcalFormatted) target today")
+    }
+
+    private func healthMetric(_ title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(CalorynTheme.caption)
+                .foregroundStyle(CalorynTheme.textSecondary)
+
+            Text(value)
+                .font(CalorynTheme.numericCaption)
+                .foregroundStyle(CalorynTheme.textPrimary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

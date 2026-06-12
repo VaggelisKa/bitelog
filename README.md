@@ -1,6 +1,6 @@
 # Caloryn
 
-Caloryn is a native iOS calorie and macro tracking app built with SwiftUI and SwiftData. It focuses on fast daily logging, profile-based calorie targets, Open Food Facts search, barcode lookup, and lightweight history/export flows.
+Caloryn is a native iOS calorie and macro tracking app built with SwiftUI and SwiftData. It focuses on fast daily logging, profile-based calorie targets, optional Apple Health calorie adjustments, Open Food Facts search, barcode lookup, and lightweight history/export flows.
 
 ## Stack
 
@@ -18,6 +18,7 @@ Caloryn is a native iOS calorie and macro tracking app built with SwiftUI and Sw
 - Food search and barcode scanning backed by Open Food Facts
 - Custom foods stored locally in SwiftData
 - Daily calorie ring, macro progress, optional Nutri-Score summary, and history view
+- Optional Apple Health Active Energy adjustment, off by default and calculated on device
 - CSV export of logged food entries
 - Theme preference and optional iCloud sync toggle
 
@@ -66,4 +67,5 @@ Current project settings in the checked-in Xcode project:
 
 - The app uses network calls to Open Food Facts, so search and barcode lookup require connectivity.
 - SwiftData sync is configured to use CloudKit when the `iCloudSyncEnabled` preference is on.
+- Apple Health integration is opt-in, reads Active Energy only, and does not store Health samples in SwiftData.
 - CSV export writes a temporary file and presents the native iOS share sheet.
