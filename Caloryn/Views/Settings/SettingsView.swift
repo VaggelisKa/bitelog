@@ -310,7 +310,9 @@ struct GoalEditView: View {
                     HStack {
                         TextField("Target", text: $targetText)
                             .keyboardType(.numberPad)
+                            .font(CalorynTheme.numericBody)
                             .focused($focusedField, equals: .manualTarget)
+                            .calorynInputField(isFocused: focusedField == .manualTarget)
                         Text("kcal")
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -511,6 +513,7 @@ private struct NutrientGoalEditRow: View {
                     .multilineTextAlignment(.trailing)
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(isInvalid ? CalorynTheme.terracotta : CalorynTheme.textPrimary)
+                    .calorynInputField(isFocused: focusedField == .nutrient(nutrient))
                     .frame(width: 92)
                     .accessibilityLabel("\(nutrient.displayName) goal in \(nutrient.unit.inputUnitLabel)")
 
