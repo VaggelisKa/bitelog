@@ -131,7 +131,10 @@ struct RecipeFormView: View {
 
             TextField("Recipe name (e.g. Greek Salad)", text: $name)
                 .font(CalorynTheme.bodyText)
-                .textFieldStyle(.roundedBorder)
+                .textFieldStyle(.plain)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .background(.thinMaterial, in: .rect(cornerRadius: CalorynTheme.smallCornerRadius))
                 .textInputAutocapitalization(.words)
                 .focused($isNameFocused)
         }
@@ -266,17 +269,13 @@ struct RecipeFormView: View {
         Button(role: .destructive) {
             showingDeleteConfirmation = true
         } label: {
-            HStack {
-                Image(systemName: "trash")
-                Text("Delete Recipe")
-            }
+            Label("Delete Recipe", systemImage: "trash")
             .font(.system(.body, weight: .medium))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
+            .padding(.vertical, 14)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.red)
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+        .buttonStyle(.glass)
+        .tint(CalorynTheme.terracotta)
     }
 
     @MainActor

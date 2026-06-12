@@ -27,7 +27,6 @@ struct FoodSearchView: View {
     var snackIndex: Int = 0
     var mode: FoodSearchMode = .logging
 
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \FoodItem.lastUsed, order: .reverse) private var recentFoods: [FoodItem]
 
@@ -37,9 +36,6 @@ struct FoodSearchView: View {
     @State private var selectedFoodItem: FoodItem?
     @State private var showingScanner = false
     @State private var showingCustomFoodForm = false
-    @State private var showingRecipeForm = false
-    @State private var editingCustomFood: FoodItem?
-    @State private var editingRecipe: FoodItem?
     @State private var isLookingUpBarcode = false
     @State private var barcodeLookupError: String?
     @FocusState private var isSearchFocused: Bool
@@ -86,27 +82,17 @@ struct FoodSearchView: View {
                     }
                     .accessibilityLabel("Close")
                 }
-                ToolbarItem(placement: .primaryAction) {
-                    Menu {
+                if mode.isIngredientSelection {
+                    ToolbarItem(placement: .primaryAction) {
                         Button {
                             showingCustomFoodForm = true
                         } label: {
-                            Label("Create Manual Entry", systemImage: "plus")
+                            Image(systemName: "plus")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundStyle(CalorynTheme.sage)
                         }
-
-                        if !mode.isIngredientSelection {
-                            Button {
-                                showingRecipeForm = true
-                            } label: {
-                                Label("Create Recipe", systemImage: "list.bullet.rectangle")
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(CalorynTheme.sage)
+                        .accessibilityLabel("Create Manual Entry")
                     }
-                    .accessibilityLabel("Create")
                 }
             }
             .navigationDestination(item: $selectedProduct) { product in
@@ -135,21 +121,6 @@ struct FoodSearchView: View {
                         handleFoodItemSelection(food)
                     }
                 })
-            }
-            .sheet(isPresented: $showingRecipeForm) {
-                RecipeFormView(onSaved: { _ in
-                    showingRecipeForm = false
-                    Task { @MainActor in
-                        searchText = ""
-                        searchService.clearResults()
-                    }
-                })
-            }
-            .sheet(item: $editingCustomFood) { food in
-                CustomFoodFormView(existingFood: food)
-            }
-            .sheet(item: $editingRecipe) { recipe in
-                RecipeFormView(existingRecipe: recipe)
             }
             .fullScreenCover(isPresented: $showingScanner) {
                 barcodeScannerSheet
@@ -210,7 +181,7 @@ struct FoodSearchView: View {
                 ContentUnavailableView(
                     "No Recent Foods",
                     systemImage: "clock",
-                    description: Text("Search above or tap + to create a saved food.")
+                    description: Text("Search above or create saved foods from My Foods.")
                 )
             } else {
                 List {
@@ -232,7 +203,7 @@ struct FoodSearchView: View {
                                 customFoodRow(for: food)
                             }
                         } header: {
-                            Text("My Foods")
+                            Text("Manual Entries")
                                 .font(CalorynTheme.caption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                         }
@@ -319,7 +290,7 @@ struct FoodSearchView: View {
                                 customFoodRow(for: food)
                             }
                         } header: {
-                            Text("My Foods")
+                            Text("Manual Entries")
                                 .font(CalorynTheme.caption)
                                 .foregroundStyle(CalorynTheme.textSecondary)
                         }
@@ -378,19 +349,6 @@ struct FoodSearchView: View {
         .onTapGesture {
             handleFoodItemSelection(food)
         }
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                modelContext.delete(food)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-            Button {
-                editingCustomFood = food
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-            .tint(CalorynTheme.sage)
-        }
     }
 
     private func recipeRow(for food: FoodItem) -> some View {
@@ -405,19 +363,6 @@ struct FoodSearchView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             handleFoodItemSelection(food)
-        }
-        .swipeActions(edge: .trailing) {
-            Button(role: .destructive) {
-                modelContext.delete(food)
-            } label: {
-                Label("Delete", systemImage: "trash")
-            }
-            Button {
-                editingRecipe = food
-            } label: {
-                Label("Edit", systemImage: "pencil")
-            }
-            .tint(CalorynTheme.sage)
         }
     }
 

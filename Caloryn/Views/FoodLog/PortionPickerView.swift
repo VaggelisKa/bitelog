@@ -14,8 +14,6 @@ struct PortionPickerView: View {
 
     @State private var portionGrams: Double = 100
     @State private var selectedMeal: MealType
-    @State private var showingCustomFoodEditor = false
-    @State private var showingRecipeEditor = false
     @State private var portionMode: PortionMode = .grams
     @State private var selectedGramStep: Int = 100
     @State private var selectedServingCount: Int = 1
@@ -160,42 +158,6 @@ struct PortionPickerView: View {
         }
         .navigationTitle("Portion")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if foodItem.isCustom || foodItem.isRecipe {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        if foodItem.isRecipe {
-                            showingRecipeEditor = true
-                        } else {
-                            showingCustomFoodEditor = true
-                        }
-                    } label: {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundStyle(CalorynTheme.sage)
-                    }
-                    .accessibilityLabel(foodItem.isRecipe ? "Edit Recipe" : "Edit Manual Entry")
-                }
-            }
-        }
-        .sheet(isPresented: $showingCustomFoodEditor) {
-            CustomFoodFormView(
-                existingFood: foodItem,
-                onSaved: { _ in
-                    updatePortionFromDefaultServing()
-                },
-                allowsDeletion: false
-            )
-        }
-        .sheet(isPresented: $showingRecipeEditor) {
-            RecipeFormView(
-                existingRecipe: foodItem,
-                onSaved: { _ in
-                    updatePortionFromDefaultServing()
-                },
-                allowsDeletion: false
-            )
-        }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 0) {
                 Button(action: logFood) {
@@ -460,21 +422,6 @@ struct PortionPickerView: View {
             onLogged()
         } else {
             dismiss()
-        }
-    }
-
-    private func updatePortionFromDefaultServing() {
-        let defaultPortion = foodItem.defaultServingG ?? 100
-        portionGrams = defaultPortion
-        selectedGramStep = Self.normalizedGramStep(defaultPortion, limit: Self.gramOptionLimit(for: foodItem))
-
-        if foodItem.isRecipe {
-            portionMode = .recipeServing
-            selectedRecipeServingID = RecipeServingOption.one.id
-        } else if let info = foodItem.servingInfo {
-            portionMode = .serving
-            let count = max(1, min(maxServingCount, Int(round(defaultPortion / info.gramsPerUnit))))
-            selectedServingCount = count
         }
     }
 
