@@ -81,6 +81,13 @@ struct TodayView: View {
                             }
                         }
 
+                        MacroProgressView(
+                            entries: todayEntries,
+                            nutrientTargets: profile?.nutrientTargets ?? [:],
+                            nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
+                        )
+                        .glassCard()
+
                         if showNutriscore, hasNutriscoreData {
                             NutriscoreDaySummary(distribution: nutriscoreDistribution)
                                 .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .center)))

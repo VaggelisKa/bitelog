@@ -33,9 +33,16 @@ struct NutritionDetailsView: View {
         totalCalories > Double(calorieTarget) ? CalorynTheme.terracotta : CalorynTheme.sage
     }
 
+    private static let alwaysPresentNutrients: Set<TrackedNutrient> = [.protein, .carbs, .fat, .fiber]
+
     private var allNutrientMetrics: [TrackedNutrientMetric] {
-        TrackedNutrient.allCases.map { nutrient in
-            metric(for: nutrient, value: nutrient.value(in: entries))
+        TrackedNutrient.allCases.compactMap { nutrient in
+            let value = nutrient.value(in: entries)
+            let target = nutrientTargets[nutrient]
+            if !Self.alwaysPresentNutrients.contains(nutrient) && value == 0 && target == nil {
+                return nil
+            }
+            return metric(for: nutrient, value: value)
         }
     }
 
