@@ -183,7 +183,7 @@ struct NutritionDetailsView: View {
                         Circle()
                             .fill(CalorynTheme.carbColor.opacity(0.16))
 
-                        Image(systemName: "figure.run")
+                        Image(systemName: "flame.fill")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(CalorynTheme.carbColor)
                     }

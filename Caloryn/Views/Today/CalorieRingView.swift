@@ -132,6 +132,9 @@ struct CalorieRingView: View {
         .contentShape(Circle())
         .scaleEffect(isDetailsPressing ? 0.94 : 1)
         .animation(.smooth(duration: 0.2), value: isDetailsPressing)
+        .animation(.smooth(duration: 0.35), value: activityCredit)
+        .animation(.smooth(duration: 0.35), value: adjustedTarget)
+        .animation(.smooth(duration: 0.35), value: isActivityLoading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
         .accessibilityValue(isOver
@@ -174,12 +177,18 @@ struct CalorieRingView: View {
             .foregroundStyle(CalorynTheme.textSecondary)
             .padding(.top, 2)
         } else if hasActivityCredit {
-            Text("+\(activityCredit) activity")
+            HStack(spacing: 4) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 9, weight: .bold))
+
+                Text("+\(activityCredit) activity")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+            }
                 .font(.system(.caption2, design: .rounded, weight: .semibold))
                 .foregroundStyle(activityCreditColor)
-                .lineLimit(1)
-                .minimumScaleFactor(0.78)
                 .padding(.top, 2)
+                .accessibilityLabel("\(activityCredit) calorie activity credit")
         }
     }
 

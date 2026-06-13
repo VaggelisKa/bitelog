@@ -1,8 +1,10 @@
 import SwiftUI
 import SwiftData
+@preconcurrency import HealthKit
 
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \UserProfile.updatedAt, order: .reverse) private var profiles: [UserProfile]
     @Query private var allEntries: [FoodLogEntry]
 
@@ -17,6 +19,7 @@ struct TodayView: View {
     @State private var activeEnergyKcal: Double = 0
     @State private var isLoadingActiveEnergy = false
     @State private var healthEnergyMessage: String?
+    @State private var activeEnergyObserver: HKObserverQuery?
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
@@ -176,6 +179,23 @@ struct TodayView: View {
         .task(id: healthRefreshKey) {
             await refreshActiveEnergy()
         }
+        .onAppear {
+            startActiveEnergyObserverIfNeeded()
+        }
+        .onDisappear {
+            stopActiveEnergyObserver()
+        }
+        .onChange(of: appleHealthAdjustmentEnabled) {
+            startActiveEnergyObserverIfNeeded()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            startActiveEnergyObserverIfNeeded()
+
+            Task {
+                await refreshActiveEnergy()
+            }
+        }
     }
 
     private var dateNavigator: some View {
@@ -300,6 +320,29 @@ struct TodayView: View {
             appleHealthAdjustmentEnabled = false
             healthEnergyMessage = error.localizedDescription
         }
+    }
+
+    @MainActor
+    private func startActiveEnergyObserverIfNeeded() {
+        guard appleHealthAdjustmentEnabled, HealthKitService.isHealthDataAvailable else {
+            stopActiveEnergyObserver()
+            return
+        }
+
+        guard activeEnergyObserver == nil else { return }
+
+        activeEnergyObserver = HealthKitService.observeActiveEnergyChanges {
+            Task {
+                await refreshActiveEnergy()
+            }
+        }
+    }
+
+    @MainActor
+    private func stopActiveEnergyObserver() {
+        guard activeEnergyObserver != nil else { return }
+        HealthKitService.stop(activeEnergyObserver)
+        activeEnergyObserver = nil
     }
 }
 

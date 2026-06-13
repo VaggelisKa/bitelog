@@ -86,6 +86,28 @@ enum HealthKitService {
         }
     }
 
+    static func observeActiveEnergyChanges(onChange: @escaping @MainActor () -> Void) -> HKObserverQuery? {
+        guard isHealthDataAvailable else { return nil }
+
+        let query = HKObserverQuery(sampleType: activeEnergyType, predicate: nil) { _, completionHandler, error in
+            if error == nil {
+                Task { @MainActor in
+                    onChange()
+                }
+            }
+
+            completionHandler()
+        }
+
+        store.execute(query)
+        return query
+    }
+
+    static func stop(_ query: HKQuery?) {
+        guard let query else { return }
+        store.stop(query)
+    }
+
     nonisolated private static func isNoDataError(_ error: Error) -> Bool {
         if let hkError = error as? HKError {
             return hkError.code == .errorNoData
