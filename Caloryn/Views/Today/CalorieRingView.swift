@@ -2,12 +2,7 @@ import SwiftUI
 import UIKit
 
 struct CalorieRingView: View {
-    let consumed: Double
-    let baseTarget: Int
-    let adjustedTarget: Int
-    let activityCredit: Int
-    let isActivityEnabled: Bool
-    let isActivityLoading: Bool
+    let calorieBudget: ActivityCalorieBudget
     let ringSize: CGFloat
     var onDetailsRequested: (() -> Void)? = nil
 
@@ -15,46 +10,14 @@ struct CalorieRingView: View {
     @State private var animatedRingProgress: Double = 0
     @State private var isDetailsPressing = false
 
-    private var progress: Double {
-        guard adjustedTarget > 0 else { return 0 }
-        return min(consumed / Double(adjustedTarget), 1.5)
-    }
-
-    private var displayedRingProgress: Double {
-        min(progress, 1.0)
-    }
-
-    private var remaining: Int {
-        max(0, adjustedTarget - Int(consumed))
-    }
-
-    private var overAmount: Int {
-        max(0, Int(consumed) - adjustedTarget)
-    }
-
-    private var isOver: Bool {
-        consumed > Double(adjustedTarget)
-    }
-
-    private var consumedDisplay: Int {
-        Int(consumed.rounded(.towardZero))
-    }
-
-    private var hasActivityCredit: Bool {
-        isActivityEnabled && activityCredit > 0 && adjustedTarget > baseTarget
-    }
-
-    private var baseProgressEnd: Double {
-        guard adjustedTarget > 0 else { return 1 }
-        return min(max(Double(baseTarget) / Double(adjustedTarget), 0), 1)
-    }
-
     private var animatedBaseProgress: Double {
-        hasActivityCredit ? min(animatedRingProgress, baseProgressEnd) : animatedRingProgress
+        calorieBudget.hasActivityCredit ? min(animatedRingProgress, calorieBudget.baseProgressEnd) : animatedRingProgress
     }
 
     private var animatedCreditProgress: Double {
-        guard hasActivityCredit, animatedRingProgress > baseProgressEnd else { return baseProgressEnd }
+        guard calorieBudget.hasActivityCredit, animatedRingProgress > calorieBudget.baseProgressEnd else {
+            return calorieBudget.baseProgressEnd
+        }
         return min(animatedRingProgress, 1)
     }
 
@@ -71,35 +34,38 @@ struct CalorieRingView: View {
                 )
 
             Circle()
-                .trim(from: baseProgressEnd, to: hasActivityCredit ? 1 : baseProgressEnd)
+                .trim(
+                    from: calorieBudget.baseProgressEnd,
+                    to: calorieBudget.hasActivityCredit ? 1 : calorieBudget.baseProgressEnd
+                )
                 .stroke(
                     activityCreditColor.opacity(0.42),
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .opacity(hasActivityCredit ? 1 : 0)
+                .opacity(calorieBudget.hasActivityCredit ? 1 : 0)
 
             Circle()
                 .trim(from: 0, to: animatedBaseProgress)
                 .stroke(
-                    isOver ? CalorynTheme.terracotta : CalorynTheme.sage,
+                    calorieBudget.isOver ? CalorynTheme.terracotta : CalorynTheme.sage,
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
                 .opacity(animatedRingProgress < 0.01 ? 0 : 1)
 
             Circle()
-                .trim(from: baseProgressEnd, to: animatedCreditProgress)
+                .trim(from: calorieBudget.baseProgressEnd, to: animatedCreditProgress)
                 .stroke(
-                    isOver ? CalorynTheme.terracotta : activityCreditColor,
+                    calorieBudget.isOver ? CalorynTheme.terracotta : activityCreditColor,
                     style: StrokeStyle(lineWidth: 14, lineCap: .round)
                 )
                 .rotationEffect(.degrees(-90))
-                .opacity(hasActivityCredit && animatedCreditProgress > baseProgressEnd ? 1 : 0)
+                .opacity(calorieBudget.hasActivityCredit && animatedCreditProgress > calorieBudget.baseProgressEnd ? 1 : 0)
 
             VStack(spacing: 2) {
-                if isOver {
-                    Text("\(overAmount)")
+                if calorieBudget.isOver {
+                    Text("\(calorieBudget.overAmount)")
                         .font(.system(size: numberSize, weight: .bold, design: .rounded))
                         .foregroundStyle(CalorynTheme.terracotta)
                         .contentTransition(.numericText())
@@ -108,7 +74,7 @@ struct CalorieRingView: View {
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.terracotta.opacity(0.85))
                 } else {
-                    Text("\(remaining)")
+                    Text("\(calorieBudget.remaining)")
                         .font(.system(size: numberSize, weight: .bold, design: .rounded))
                         .foregroundStyle(CalorynTheme.textPrimary)
                         .contentTransition(.numericText())
@@ -118,9 +84,9 @@ struct CalorieRingView: View {
                         .foregroundStyle(CalorynTheme.textSecondary)
                 }
 
-                Text("\(consumedDisplay) eaten")
+                Text("\(calorieBudget.roundedConsumed) eaten")
                     .font(CalorynTheme.caption)
-                    .foregroundStyle(isOver ? CalorynTheme.terracotta.opacity(0.7) : CalorynTheme.textSecondary.opacity(0.75))
+                    .foregroundStyle(calorieBudget.isOver ? CalorynTheme.terracotta.opacity(0.7) : CalorynTheme.textSecondary.opacity(0.75))
                     .padding(.top, 6)
 
                 activityCreditCue
@@ -132,14 +98,14 @@ struct CalorieRingView: View {
         .contentShape(Circle())
         .scaleEffect(isDetailsPressing ? 0.94 : 1)
         .animation(.smooth(duration: 0.2), value: isDetailsPressing)
-        .animation(.smooth(duration: 0.35), value: activityCredit)
-        .animation(.smooth(duration: 0.35), value: adjustedTarget)
-        .animation(.smooth(duration: 0.35), value: isActivityLoading)
+        .animation(.smooth(duration: 0.35), value: calorieBudget.activityCredit)
+        .animation(.smooth(duration: 0.35), value: calorieBudget.adjustedTarget)
+        .animation(.smooth(duration: 0.35), value: calorieBudget.isActivityLoading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityDescription)
-        .accessibilityValue(isOver
-            ? "\(consumedDisplay) eaten, \(overAmount) calories over target of \(adjustedTarget)"
-            : "\(consumedDisplay) eaten, \(remaining) remaining of \(adjustedTarget)"
+        .accessibilityValue(calorieBudget.isOver
+            ? "\(calorieBudget.roundedConsumed) eaten, \(calorieBudget.overAmount) calories over target of \(calorieBudget.adjustedTarget)"
+            : "\(calorieBudget.roundedConsumed) eaten, \(calorieBudget.remaining) remaining of \(calorieBudget.adjustedTarget)"
         )
         .accessibilityHint(onDetailsRequested == nil ? "" : "Tap or long press to show nutrition details.")
         .accessibilityAddTraits(onDetailsRequested == nil ? [] : .isButton)
@@ -154,9 +120,9 @@ struct CalorieRingView: View {
             perform: requestDetails
         )
         .onAppear {
-            animatedRingProgress = displayedRingProgress
+            animatedRingProgress = calorieBudget.displayedRingProgress
         }
-        .onChange(of: displayedRingProgress) { _, newProgress in
+        .onChange(of: calorieBudget.displayedRingProgress) { _, newProgress in
             withAnimation(.smooth(duration: 0.45)) {
                 animatedRingProgress = newProgress
             }
@@ -165,7 +131,7 @@ struct CalorieRingView: View {
 
     @ViewBuilder
     private var activityCreditCue: some View {
-        if isActivityLoading {
+        if calorieBudget.isActivityLoading {
             HStack(spacing: 5) {
                 ProgressView()
                     .controlSize(.mini)
@@ -176,29 +142,29 @@ struct CalorieRingView: View {
             .font(.system(.caption2, design: .rounded, weight: .medium))
             .foregroundStyle(CalorynTheme.textSecondary)
             .padding(.top, 2)
-        } else if hasActivityCredit {
+        } else if calorieBudget.hasActivityCredit {
             HStack(spacing: 4) {
                 Image(systemName: "flame.fill")
                     .font(.system(size: 9, weight: .bold))
 
-                Text("+\(activityCredit) activity")
+                Text("+\(calorieBudget.activityCredit) activity")
                     .lineLimit(1)
                     .minimumScaleFactor(0.78)
             }
                 .font(.system(.caption2, design: .rounded, weight: .semibold))
                 .foregroundStyle(activityCreditColor)
                 .padding(.top, 2)
-                .accessibilityLabel("\(activityCredit) calorie activity credit")
+                .accessibilityLabel("\(calorieBudget.activityCredit) calorie activity credit")
         }
     }
 
     private var accessibilityDescription: String {
-        let activityDescription = hasActivityCredit ? ", includes \(activityCredit) calorie activity credit" : ""
+        let activityDescription = calorieBudget.hasActivityCredit ? ", includes \(calorieBudget.activityCredit) calorie activity credit" : ""
 
-        if isOver {
-            return "Calorie ring, \(consumedDisplay) eaten, \(overAmount) calories over a \(adjustedTarget) calorie goal\(activityDescription)"
+        if calorieBudget.isOver {
+            return "Calorie ring, \(calorieBudget.roundedConsumed) eaten, \(calorieBudget.overAmount) calories over a \(calorieBudget.adjustedTarget) calorie goal\(activityDescription)"
         } else {
-            return "Calorie ring, \(remaining) remaining of \(adjustedTarget) calories, \(consumedDisplay) eaten\(activityDescription)"
+            return "Calorie ring, \(calorieBudget.remaining) remaining of \(calorieBudget.adjustedTarget) calories, \(calorieBudget.roundedConsumed) eaten\(activityDescription)"
         }
     }
 
@@ -224,12 +190,14 @@ struct CalorieRingView: View {
 
 #Preview("Ring - No Activity") {
     CalorieRingView(
-        consumed: 1200,
-        baseTarget: 2000,
-        adjustedTarget: 2000,
-        activityCredit: 0,
-        isActivityEnabled: false,
-        isActivityLoading: false,
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 1200,
+            baseTarget: 2000,
+            activeEnergyKcal: 0,
+            isActivityAdjustmentEnabled: false,
+            isActivityLoading: false,
+            activityMessage: nil
+        ),
         ringSize: 220
     )
     .padding()
@@ -237,12 +205,14 @@ struct CalorieRingView: View {
 
 #Preview("Ring - Activity Credit") {
     CalorieRingView(
-        consumed: 2070,
-        baseTarget: 2000,
-        adjustedTarget: 2350,
-        activityCredit: 350,
-        isActivityEnabled: true,
-        isActivityLoading: false,
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 2070,
+            baseTarget: 2000,
+            activeEnergyKcal: 500,
+            isActivityAdjustmentEnabled: true,
+            isActivityLoading: false,
+            activityMessage: nil
+        ),
         ringSize: 220
     )
     .padding()
@@ -250,12 +220,14 @@ struct CalorieRingView: View {
 
 #Preview("Ring - Over Adjusted Target") {
     CalorieRingView(
-        consumed: 2450,
-        baseTarget: 2000,
-        adjustedTarget: 2350,
-        activityCredit: 350,
-        isActivityEnabled: true,
-        isActivityLoading: false,
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 2450,
+            baseTarget: 2000,
+            activeEnergyKcal: 500,
+            isActivityAdjustmentEnabled: true,
+            isActivityLoading: false,
+            activityMessage: nil
+        ),
         ringSize: 220
     )
     .padding()
@@ -263,12 +235,14 @@ struct CalorieRingView: View {
 
 #Preview("Ring - Loading Activity") {
     CalorieRingView(
-        consumed: 1200,
-        baseTarget: 2000,
-        adjustedTarget: 2000,
-        activityCredit: 0,
-        isActivityEnabled: true,
-        isActivityLoading: true,
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 1200,
+            baseTarget: 2000,
+            activeEnergyKcal: 0,
+            isActivityAdjustmentEnabled: true,
+            isActivityLoading: true,
+            activityMessage: nil
+        ),
         ringSize: 220
     )
     .padding()

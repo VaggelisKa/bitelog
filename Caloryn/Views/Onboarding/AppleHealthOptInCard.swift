@@ -5,7 +5,7 @@ struct AppleHealthOptInCard: View {
     let message: String?
 
     private var isHealthAvailable: Bool {
-        HealthKitService.isHealthDataAvailable
+        AppleHealthAdjustmentSettings.isHealthAvailable
     }
 
     var body: some View {
@@ -41,7 +41,7 @@ struct AppleHealthOptInCard: View {
             }
 
             HStack(spacing: 10) {
-                Label("70% Active Energy credit", systemImage: "flame.fill")
+                Label(AppleHealthAdjustmentSettings.activeEnergyCreditShortText, systemImage: "flame.fill")
                 Label("On-device", systemImage: "lock.fill")
             }
             .font(CalorynTheme.caption)

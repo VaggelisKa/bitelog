@@ -12,8 +12,7 @@ struct SettingsView: View {
     @AppStorage("themePreference") private var themePreferenceRaw = ThemePreference.system.rawValue
     @AppStorage("showNutriscore") private var showNutriscore = true
     @AppStorage("iCloudSyncEnabled") private var iCloudSyncEnabled = true
-    @AppStorage(HealthSettingsKeys.adjustmentEnabled) private var appleHealthAdjustmentEnabled = false
-    @AppStorage(HealthSettingsKeys.authorizationRequested) private var appleHealthAuthorizationRequested = false
+    @AppStorage(AppleHealthAdjustmentSettings.adjustmentEnabledKey) private var appleHealthAdjustmentEnabled = false
 
     @State private var showExportSheet = false
     @State private var exportURL: URL?
@@ -22,7 +21,7 @@ struct SettingsView: View {
     @State private var healthStatusMessage: String?
 
     private var profile: UserProfile? { profiles.first }
-    private var isHealthAvailable: Bool { HealthKitService.isHealthDataAvailable }
+    private var isHealthAvailable: Bool { AppleHealthAdjustmentSettings.isHealthAvailable }
 
     var body: some View {
         NavigationStack {
@@ -70,7 +69,7 @@ struct SettingsView: View {
             }
 
             if appleHealthAdjustmentEnabled {
-                LabeledContent("Credit", value: "\(healthCreditPercent)% of Active Energy")
+                LabeledContent("Credit", value: AppleHealthAdjustmentSettings.activeEnergyCreditPolicyText)
             }
 
             if let healthStatusMessage {
@@ -103,31 +102,12 @@ struct SettingsView: View {
     }
 
     private var appleHealthFooterText: String {
-        guard isHealthAvailable else {
-            return "Apple Health is not available on this device."
-        }
-
-        if appleHealthAdjustmentEnabled {
-            return "Caloryn reads Active Energy only and applies the adjustment on device."
-        }
-
-        return "Adjust calories based on activity"
-    }
-
-    private var healthCreditPercent: Int {
-        Int((HealthCalorieAdjustment.activeEnergyCreditRatio * 100).rounded())
+        AppleHealthAdjustmentSettings.footerText(isEnabled: appleHealthAdjustmentEnabled)
     }
 
     @MainActor
     private func enableAppleHealthAdjustment() async {
         guard !isRequestingHealthAuthorization else { return }
-
-        guard isHealthAvailable else {
-            appleHealthAuthorizationRequested = false
-            appleHealthAdjustmentEnabled = false
-            healthStatusMessage = "Apple Health is not available on this device."
-            return
-        }
 
         isRequestingHealthAuthorization = true
         healthStatusMessage = nil
@@ -135,21 +115,15 @@ struct SettingsView: View {
             isRequestingHealthAuthorization = false
         }
 
-        do {
-            try await HealthKitService.requestActiveEnergyAuthorization()
-            appleHealthAuthorizationRequested = true
-            appleHealthAdjustmentEnabled = true
-        } catch {
-            appleHealthAuthorizationRequested = false
-            appleHealthAdjustmentEnabled = false
-            healthStatusMessage = error.localizedDescription
-        }
+        let update = await AppleHealthAdjustmentSettings.enable()
+        appleHealthAdjustmentEnabled = update.isEnabled
+        healthStatusMessage = update.message
     }
 
     private func disableAppleHealthAdjustment() {
-        appleHealthAuthorizationRequested = false
-        appleHealthAdjustmentEnabled = false
-        healthStatusMessage = nil
+        let update = AppleHealthAdjustmentSettings.disable()
+        appleHealthAdjustmentEnabled = update.isEnabled
+        healthStatusMessage = update.message
     }
 
     private var appearanceSection: some View {

@@ -21,7 +21,7 @@ enum HealthKitService {
     private static let store = HKHealthStore()
     private static let activeEnergyType = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned)!
 
-    static var isHealthDataAvailable: Bool {
+    nonisolated static var isHealthDataAvailable: Bool {
         HKHealthStore.isHealthDataAvailable()
     }
 

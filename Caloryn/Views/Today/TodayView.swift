@@ -1,6 +1,5 @@
 import SwiftUI
 import SwiftData
-@preconcurrency import HealthKit
 
 struct TodayView: View {
     @Environment(\.modelContext) private var modelContext
@@ -15,21 +14,20 @@ struct TodayView: View {
     @State private var selectedSnackIndex: Int = 1
 
     @AppStorage("showNutriscore") private var showNutriscore = true
-    @AppStorage(HealthSettingsKeys.adjustmentEnabled) private var appleHealthAdjustmentEnabled = false
-    @State private var activeEnergyKcal: Double = 0
-    @State private var isLoadingActiveEnergy = false
-    @State private var healthEnergyMessage: String?
-    @State private var activeEnergyObserver: HKObserverQuery?
+    @AppStorage(AppleHealthAdjustmentSettings.adjustmentEnabledKey) private var appleHealthAdjustmentEnabled = false
+    @State private var activeEnergyTracker = ActiveEnergyDayTracker()
     @ScaledMetric private var ringSize: CGFloat = 180
 
     private var profile: UserProfile? { profiles.first }
     private var baseCalorieTarget: Int { profile?.dailyCalorieTarget ?? 2000 }
-    private var activeEnergyCredit: Int { HealthCalorieAdjustment.creditedCalories(from: activeEnergyKcal) }
-    private var displayedCalorieTarget: Int {
-        HealthCalorieAdjustment.adjustedTarget(
+    private var calorieBudget: ActivityCalorieBudget {
+        ActivityCalorieBudget(
+            consumed: totalCalories,
             baseTarget: baseCalorieTarget,
-            activeEnergyKcal: activeEnergyKcal,
-            isEnabled: appleHealthAdjustmentEnabled
+            activeEnergyKcal: activeEnergyTracker.activeEnergyKcal,
+            isActivityAdjustmentEnabled: appleHealthAdjustmentEnabled,
+            isActivityLoading: activeEnergyTracker.isLoading,
+            activityMessage: activeEnergyTracker.message
         )
     }
     private var healthRefreshKey: String {
@@ -91,12 +89,7 @@ struct TodayView: View {
                 ScrollView {
                     VStack(spacing: CalorynTheme.cardSpacing) {
                         CalorieRingView(
-                            consumed: totalCalories,
-                            baseTarget: baseCalorieTarget,
-                            adjustedTarget: displayedCalorieTarget,
-                            activityCredit: activeEnergyCredit,
-                            isActivityEnabled: appleHealthAdjustmentEnabled,
-                            isActivityLoading: isLoadingActiveEnergy,
+                            calorieBudget: calorieBudget,
                             ringSize: ringSize
                         ) {
                             withAnimation(.smooth(duration: 0.2)) {
@@ -162,13 +155,7 @@ struct TodayView: View {
                 NutritionDetailsView(
                     date: selectedDate,
                     entries: todayEntries,
-                    calorieTarget: displayedCalorieTarget,
-                    baseCalorieTarget: baseCalorieTarget,
-                    activeEnergyKcal: activeEnergyKcal,
-                    activityCredit: activeEnergyCredit,
-                    isActivityAdjustmentEnabled: appleHealthAdjustmentEnabled,
-                    isActivityLoading: isLoadingActiveEnergy,
-                    activityMessage: healthEnergyMessage,
+                    calorieBudget: calorieBudget,
                     nutrientTargets: profile?.nutrientTargets ?? [:],
                     nutrientGoalKinds: profile?.nutrientGoalKinds ?? [:]
                 )
@@ -177,24 +164,17 @@ struct TodayView: View {
             }
         }
         .task(id: healthRefreshKey) {
-            await refreshActiveEnergy()
-        }
-        .onAppear {
-            startActiveEnergyObserverIfNeeded()
+            await activeEnergyTracker.configure(
+                date: selectedDate,
+                isEnabled: appleHealthAdjustmentEnabled
+            )
         }
         .onDisappear {
-            stopActiveEnergyObserver()
-        }
-        .onChange(of: appleHealthAdjustmentEnabled) {
-            startActiveEnergyObserverIfNeeded()
+            activeEnergyTracker.stopObserving()
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
-            startActiveEnergyObserverIfNeeded()
-
-            Task {
-                await refreshActiveEnergy()
-            }
+            activeEnergyTracker.refreshWhenActive()
         }
     }
 
@@ -287,62 +267,6 @@ struct TodayView: View {
             )
             modelContext.insert(newEntry)
         }
-    }
-
-    @MainActor
-    private func refreshActiveEnergy() async {
-        guard appleHealthAdjustmentEnabled else {
-            activeEnergyKcal = 0
-            healthEnergyMessage = nil
-            return
-        }
-
-        guard HealthKitService.isHealthDataAvailable else {
-            activeEnergyKcal = 0
-            healthEnergyMessage = "Apple Health is not available on this device."
-            return
-        }
-
-        isLoadingActiveEnergy = true
-        healthEnergyMessage = nil
-        defer {
-            isLoadingActiveEnergy = false
-        }
-
-        do {
-            let kcal = try await HealthKitService.activeEnergyBurnedKcal(for: selectedDate)
-            if activeEnergyKcal != kcal {
-                activeEnergyKcal = kcal
-            }
-            healthEnergyMessage = nil
-        } catch {
-            activeEnergyKcal = 0
-            appleHealthAdjustmentEnabled = false
-            healthEnergyMessage = error.localizedDescription
-        }
-    }
-
-    @MainActor
-    private func startActiveEnergyObserverIfNeeded() {
-        guard appleHealthAdjustmentEnabled, HealthKitService.isHealthDataAvailable else {
-            stopActiveEnergyObserver()
-            return
-        }
-
-        guard activeEnergyObserver == nil else { return }
-
-        activeEnergyObserver = HealthKitService.observeActiveEnergyChanges {
-            Task {
-                await refreshActiveEnergy()
-            }
-        }
-    }
-
-    @MainActor
-    private func stopActiveEnergyObserver() {
-        guard activeEnergyObserver != nil else { return }
-        HealthKitService.stop(activeEnergyObserver)
-        activeEnergyObserver = nil
     }
 }
 

@@ -3,13 +3,7 @@ import SwiftUI
 struct NutritionDetailsView: View {
     let date: Date
     let entries: [FoodLogEntry]
-    let calorieTarget: Int
-    let baseCalorieTarget: Int
-    let activeEnergyKcal: Double
-    let activityCredit: Int
-    let isActivityAdjustmentEnabled: Bool
-    let isActivityLoading: Bool
-    let activityMessage: String?
+    let calorieBudget: ActivityCalorieBudget
     let nutrientTargets: [TrackedNutrient: Double]
     let nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind]
 
@@ -24,23 +18,26 @@ struct NutritionDetailsView: View {
     }
 
     private var roundedCalories: Int {
-        Int(totalCalories.rounded())
+        calorieBudget.roundedConsumed
     }
 
     private var remainingCalories: Int {
-        max(0, calorieTarget - roundedCalories)
+        calorieBudget.remaining
     }
 
     private var overCalories: Int {
-        max(0, roundedCalories - calorieTarget)
+        calorieBudget.overAmount
     }
 
     private var calorieAccentColor: Color {
-        totalCalories > Double(calorieTarget) ? CalorynTheme.terracotta : CalorynTheme.sage
+        calorieBudget.isOver ? CalorynTheme.terracotta : CalorynTheme.sage
     }
 
     private var shouldShowActivityCredit: Bool {
-        isActivityAdjustmentEnabled || activeEnergyKcal > 0 || activityCredit > 0 || activityMessage != nil
+        calorieBudget.isActivityAdjustmentEnabled
+            || calorieBudget.activeEnergyKcal > 0
+            || calorieBudget.activityCredit > 0
+            || calorieBudget.activityMessage != nil
     }
 
     private var allNutrientMetrics: [TrackedNutrientMetric] {
@@ -127,19 +124,19 @@ struct NutritionDetailsView: View {
                 .foregroundStyle(CalorynTheme.textPrimary)
 
             HStack(alignment: .firstTextBaseline) {
-                Text("\(Int(totalCalories.rounded()))")
+                Text("\(roundedCalories)")
                     .font(.system(size: 44, weight: .bold, design: .rounded))
                     .foregroundStyle(calorieAccentColor)
                     .contentTransition(.numericText())
 
-                Text("/ \(calorieTarget) kcal")
+                Text("/ \(calorieBudget.adjustedTarget) kcal")
                     .font(CalorynTheme.numericBody)
                     .foregroundStyle(CalorynTheme.textSecondary)
             }
 
             progressBar(
                 current: totalCalories,
-                target: Double(calorieTarget),
+                target: Double(calorieBudget.adjustedTarget),
                 color: calorieAccentColor
             )
 
@@ -148,8 +145,8 @@ struct NutritionDetailsView: View {
 
             HStack(alignment: .top, spacing: 10) {
                 summaryStat(
-                    label: totalCalories > Double(calorieTarget) ? "Over" : "Remaining",
-                    value: "\(totalCalories > Double(calorieTarget) ? overCalories : remainingCalories)",
+                    label: calorieBudget.isOver ? "Over" : "Remaining",
+                    value: "\(calorieBudget.isOver ? overCalories : remainingCalories)",
                     detail: "kcal",
                     color: calorieAccentColor
                 )
@@ -195,7 +192,7 @@ struct NutritionDetailsView: View {
                             .font(CalorynTheme.itemTitle)
                             .foregroundStyle(CalorynTheme.textPrimary)
 
-                        Text("70% of Apple Health Active Energy")
+                        Text(ActivityCalorieBudget.activeEnergyCreditPolicyText)
                             .font(CalorynTheme.caption)
                             .foregroundStyle(CalorynTheme.textSecondary)
                     }
@@ -203,11 +200,11 @@ struct NutritionDetailsView: View {
                     Spacer(minLength: 8)
 
                     HStack(spacing: 8) {
-                        if isActivityLoading {
+                        if calorieBudget.isActivityLoading {
                             ProgressView()
                         }
 
-                        Text("+\(activityCredit.kcalFormatted)")
+                        Text("+\(calorieBudget.activityCredit.kcalFormatted)")
                             .font(CalorynTheme.numericBody)
                             .foregroundStyle(CalorynTheme.carbColor)
                             .contentTransition(.numericText())
@@ -220,14 +217,14 @@ struct NutritionDetailsView: View {
                 HStack(alignment: .top, spacing: 10) {
                     compactActivityStat(
                         label: "Base",
-                        value: baseCalorieTarget.kcalFormatted
+                        value: calorieBudget.baseTarget.kcalFormatted
                     )
 
                     verticalDivider
 
                     compactActivityStat(
                         label: "Active",
-                        value: Int(activeEnergyKcal.rounded()).kcalFormatted,
+                        value: Int(calorieBudget.activeEnergyKcal.rounded()).kcalFormatted,
                         color: CalorynTheme.carbColor
                     )
 
@@ -235,11 +232,11 @@ struct NutritionDetailsView: View {
 
                     compactActivityStat(
                         label: "Today",
-                        value: calorieTarget.kcalFormatted
+                        value: calorieBudget.adjustedTarget.kcalFormatted
                     )
                 }
 
-                if let activityMessage {
+                if let activityMessage = calorieBudget.activityMessage {
                     Text(activityMessage)
                         .font(CalorynTheme.caption)
                         .foregroundStyle(CalorynTheme.terracotta)
@@ -248,7 +245,7 @@ struct NutritionDetailsView: View {
             }
             .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
             .accessibilityElement(children: .combine)
-            .accessibilityLabel("Activity credit, \(activeEnergyKcal.kcalFormatted) Active Energy, \(activityCredit.kcalFormatted) credited, \(calorieTarget.kcalFormatted) target today")
+            .accessibilityLabel("Activity credit, \(calorieBudget.activeEnergyKcal.kcalFormatted) Active Energy, \(calorieBudget.activityCredit.kcalFormatted) credited, \(calorieBudget.adjustedTarget.kcalFormatted) target today")
         }
     }
 
@@ -609,13 +606,14 @@ private struct DetailNutrient: Identifiable {
             FoodLogEntry(date: .now, mealType: .breakfast, foodItem: oatmeal, portionGrams: 80),
             FoodLogEntry(date: .now, mealType: .snack, foodItem: apple, portionGrams: 120)
         ],
-        calorieTarget: 2000,
-        baseCalorieTarget: 1900,
-        activeEnergyKcal: 143,
-        activityCredit: 100,
-        isActivityAdjustmentEnabled: true,
-        isActivityLoading: false,
-        activityMessage: nil,
+        calorieBudget: ActivityCalorieBudget(
+            consumed: 374,
+            baseTarget: 1900,
+            activeEnergyKcal: 143,
+            isActivityAdjustmentEnabled: true,
+            isActivityLoading: false,
+            activityMessage: nil
+        ),
         nutrientTargets: [
             .protein: 120,
             .carbs: 200,

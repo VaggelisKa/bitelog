@@ -26,8 +26,6 @@ struct OnboardingContainerView: View {
     @State private var carbRatio: Double = 0.40
     @State private var fatRatio: Double = 0.30
     @AppStorage("todayTrackedNutrients") private var selectedNutrientIDs = TrackedNutrient.defaultSelectionRaw
-    @AppStorage(HealthSettingsKeys.adjustmentEnabled) private var appleHealthAdjustmentEnabled = false
-    @AppStorage(HealthSettingsKeys.authorizationRequested) private var appleHealthAuthorizationRequested = false
     @State private var wantsAppleHealthAdjustment = false
     @State private var isCompletingOnboarding = false
     @State private var appleHealthOnboardingMessage: String?
@@ -98,8 +96,7 @@ struct OnboardingContainerView: View {
         appleHealthOnboardingMessage = nil
 
         guard wantsAppleHealthAdjustment else {
-            appleHealthAuthorizationRequested = false
-            appleHealthAdjustmentEnabled = false
+            AppleHealthAdjustmentSettings.disable()
             saveProfile()
             return
         }
@@ -111,26 +108,14 @@ struct OnboardingContainerView: View {
 
     @MainActor
     private func requestAppleHealthAndSaveProfile() async {
-        guard HealthKitService.isHealthDataAvailable else {
-            appleHealthAuthorizationRequested = false
-            appleHealthAdjustmentEnabled = false
-            appleHealthOnboardingMessage = "Apple Health is not available on this device."
-            return
-        }
-
         isCompletingOnboarding = true
         defer {
             isCompletingOnboarding = false
         }
 
-        do {
-            try await HealthKitService.requestActiveEnergyAuthorization()
-            appleHealthAuthorizationRequested = true
-            appleHealthAdjustmentEnabled = true
-        } catch {
-            appleHealthAuthorizationRequested = false
-            appleHealthAdjustmentEnabled = false
-            appleHealthOnboardingMessage = error.localizedDescription
+        let update = await AppleHealthAdjustmentSettings.enable()
+        if let message = update.message {
+            appleHealthOnboardingMessage = message
             return
         }
 
