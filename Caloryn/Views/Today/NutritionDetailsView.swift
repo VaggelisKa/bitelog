@@ -4,6 +4,12 @@ struct NutritionDetailsView: View {
     let date: Date
     let entries: [FoodLogEntry]
     let calorieTarget: Int
+    let baseCalorieTarget: Int
+    let activeEnergyKcal: Double
+    let activityCredit: Int
+    let isActivityAdjustmentEnabled: Bool
+    let isActivityLoading: Bool
+    let activityMessage: String?
     let nutrientTargets: [TrackedNutrient: Double]
     let nutrientGoalKinds: [TrackedNutrient: NutrientGoalKind]
 
@@ -31,6 +37,10 @@ struct NutritionDetailsView: View {
 
     private var calorieAccentColor: Color {
         totalCalories > Double(calorieTarget) ? CalorynTheme.terracotta : CalorynTheme.sage
+    }
+
+    private var shouldShowActivityCredit: Bool {
+        isActivityAdjustmentEnabled || activeEnergyKcal > 0 || activityCredit > 0 || activityMessage != nil
     }
 
     private var allNutrientMetrics: [TrackedNutrientMetric] {
@@ -85,6 +95,7 @@ struct NutritionDetailsView: View {
             ScrollView {
                 VStack(spacing: CalorynTheme.cardSpacing) {
                     calorieSummary
+                    activityCreditSummary
                     produceVarietyCard
                     allStatsGrid
                     detailSections
@@ -161,6 +172,106 @@ struct NutritionDetailsView: View {
             }
         }
         .glassCard()
+    }
+
+    @ViewBuilder
+    private var activityCreditSummary: some View {
+        if shouldShowActivityCredit {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .center, spacing: 12) {
+                    ZStack {
+                        Circle()
+                            .fill(CalorynTheme.carbColor.opacity(0.16))
+
+                        Image(systemName: "figure.run")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(CalorynTheme.carbColor)
+                    }
+                    .frame(width: 42, height: 42)
+                    .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Activity credit")
+                            .font(CalorynTheme.itemTitle)
+                            .foregroundStyle(CalorynTheme.textPrimary)
+
+                        Text("70% of Apple Health Active Energy")
+                            .font(CalorynTheme.caption)
+                            .foregroundStyle(CalorynTheme.textSecondary)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    HStack(spacing: 8) {
+                        if isActivityLoading {
+                            ProgressView()
+                        }
+
+                        Text("+\(activityCredit.kcalFormatted)")
+                            .font(CalorynTheme.numericBody)
+                            .foregroundStyle(CalorynTheme.carbColor)
+                            .contentTransition(.numericText())
+                    }
+                }
+
+                Divider()
+                    .foregroundStyle(CalorynTheme.stone.opacity(0.3))
+
+                HStack(alignment: .top, spacing: 10) {
+                    compactActivityStat(
+                        label: "Base",
+                        value: baseCalorieTarget.kcalFormatted
+                    )
+
+                    verticalDivider
+
+                    compactActivityStat(
+                        label: "Active",
+                        value: Int(activeEnergyKcal.rounded()).kcalFormatted,
+                        color: CalorynTheme.carbColor
+                    )
+
+                    verticalDivider
+
+                    compactActivityStat(
+                        label: "Today",
+                        value: calorieTarget.kcalFormatted
+                    )
+                }
+
+                if let activityMessage {
+                    Text(activityMessage)
+                        .font(CalorynTheme.caption)
+                        .foregroundStyle(CalorynTheme.terracotta)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Activity credit, \(activeEnergyKcal.kcalFormatted) Active Energy, \(activityCredit.kcalFormatted) credited, \(calorieTarget.kcalFormatted) target today")
+        }
+    }
+
+    private func compactActivityStat(
+        label: String,
+        value: String,
+        color: Color = CalorynTheme.textPrimary
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label)
+                .font(.system(.caption2, design: .rounded, weight: .medium))
+                .foregroundStyle(CalorynTheme.textSecondary)
+                .lineLimit(1)
+
+            Text(value)
+                .font(CalorynTheme.numericCaption)
+                .foregroundStyle(color)
+                .contentTransition(.numericText())
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 
     private var produceVarietyCard: some View {
@@ -464,7 +575,7 @@ private struct DetailNutrient: Identifiable {
     let unit: Unit
 }
 
-#Preview {
+#Preview("Nutrition Details - Activity Credit") {
     let oatmeal = FoodItem(
         name: "Oatmeal",
         caloriesPer100g: 389,
@@ -499,6 +610,12 @@ private struct DetailNutrient: Identifiable {
             FoodLogEntry(date: .now, mealType: .snack, foodItem: apple, portionGrams: 120)
         ],
         calorieTarget: 2000,
+        baseCalorieTarget: 1900,
+        activeEnergyKcal: 143,
+        activityCredit: 100,
+        isActivityAdjustmentEnabled: true,
+        isActivityLoading: false,
+        activityMessage: nil,
         nutrientTargets: [
             .protein: 120,
             .carbs: 200,

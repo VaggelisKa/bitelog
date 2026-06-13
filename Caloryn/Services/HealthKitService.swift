@@ -4,13 +4,14 @@ import Foundation
 enum HealthKitServiceError: LocalizedError {
     case unavailable
     case authorizationFailed
+    case activeEnergyReadDenied
 
     var errorDescription: String? {
         switch self {
         case .unavailable:
             return "Apple Health is not available on this device."
-        case .authorizationFailed:
-            return "Apple Health permission was not completed."
+        case .authorizationFailed, .activeEnergyReadDenied:
+            return "Apple Health permission wasn't given. Allow Active Energy for Caloryn in the Health app, then try again."
         }
     }
 }
@@ -43,6 +44,12 @@ enum HealthKitService {
                 }
             }
         }
+
+        do {
+            _ = try await activeEnergyBurnedKcal(for: Date())
+        } catch {
+            throw HealthKitServiceError.activeEnergyReadDenied
+        }
     }
 
     static func activeEnergyBurnedKcal(for date: Date, calendar: Calendar = .current) async throws -> Double {
@@ -61,6 +68,11 @@ enum HealthKitService {
                 options: .cumulativeSum
             ) { _, statistics, error in
                 if let error {
+                    if isNoDataError(error) {
+                        continuation.resume(returning: 0)
+                        return
+                    }
+
                     continuation.resume(throwing: error)
                     return
                 }
@@ -72,5 +84,14 @@ enum HealthKitService {
 
             store.execute(query)
         }
+    }
+
+    nonisolated private static func isNoDataError(_ error: Error) -> Bool {
+        if let hkError = error as? HKError {
+            return hkError.code == .errorNoData
+        }
+
+        let nsError = error as NSError
+        return nsError.domain == HKErrorDomain && nsError.code == HKError.Code.errorNoData.rawValue
     }
 }

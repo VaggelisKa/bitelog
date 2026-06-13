@@ -87,6 +87,9 @@ struct OnboardingContainerView: View {
                     )
                 }
             }
+            .onChange(of: wantsAppleHealthAdjustment) {
+                appleHealthOnboardingMessage = nil
+            }
         }
     }
 
@@ -95,6 +98,7 @@ struct OnboardingContainerView: View {
         appleHealthOnboardingMessage = nil
 
         guard wantsAppleHealthAdjustment else {
+            appleHealthAuthorizationRequested = false
             appleHealthAdjustmentEnabled = false
             saveProfile()
             return
@@ -108,9 +112,9 @@ struct OnboardingContainerView: View {
     @MainActor
     private func requestAppleHealthAndSaveProfile() async {
         guard HealthKitService.isHealthDataAvailable else {
+            appleHealthAuthorizationRequested = false
             appleHealthAdjustmentEnabled = false
             appleHealthOnboardingMessage = "Apple Health is not available on this device."
-            saveProfile()
             return
         }
 
@@ -124,8 +128,10 @@ struct OnboardingContainerView: View {
             appleHealthAuthorizationRequested = true
             appleHealthAdjustmentEnabled = true
         } catch {
-            appleHealthAuthorizationRequested = true
+            appleHealthAuthorizationRequested = false
             appleHealthAdjustmentEnabled = false
+            appleHealthOnboardingMessage = error.localizedDescription
+            return
         }
 
         saveProfile()

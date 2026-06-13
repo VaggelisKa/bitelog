@@ -60,14 +60,12 @@ struct SettingsView: View {
             .tint(CalorynTheme.sage)
             .disabled(!isHealthAvailable || isRequestingHealthAuthorization)
 
-            LabeledContent("Status") {
+            if isRequestingHealthAuthorization {
                 HStack(spacing: 8) {
-                    if isRequestingHealthAuthorization {
-                        ProgressView()
-                    }
+                    ProgressView()
 
-                    Text(appleHealthStatusText)
-                        .foregroundStyle(appleHealthAdjustmentEnabled ? CalorynTheme.sage : CalorynTheme.textSecondary)
+                    Text("Requesting Apple Health access")
+                        .foregroundStyle(CalorynTheme.textSecondary)
                 }
             }
 
@@ -104,12 +102,6 @@ struct SettingsView: View {
         )
     }
 
-    private var appleHealthStatusText: String {
-        guard isHealthAvailable else { return "Unavailable" }
-        if isRequestingHealthAuthorization { return "Requesting Access" }
-        return appleHealthAdjustmentEnabled ? "On" : "Off"
-    }
-
     private var appleHealthFooterText: String {
         guard isHealthAvailable else {
             return "Apple Health is not available on this device."
@@ -119,7 +111,7 @@ struct SettingsView: View {
             return "Caloryn reads Active Energy only and applies the adjustment on device."
         }
 
-        return "Off by default. Turn on to read Active Energy only for a local calorie adjustment."
+        return "Adjust calories based on activity"
     }
 
     private var healthCreditPercent: Int {
@@ -131,6 +123,7 @@ struct SettingsView: View {
         guard !isRequestingHealthAuthorization else { return }
 
         guard isHealthAvailable else {
+            appleHealthAuthorizationRequested = false
             appleHealthAdjustmentEnabled = false
             healthStatusMessage = "Apple Health is not available on this device."
             return
@@ -147,13 +140,14 @@ struct SettingsView: View {
             appleHealthAuthorizationRequested = true
             appleHealthAdjustmentEnabled = true
         } catch {
-            appleHealthAuthorizationRequested = true
+            appleHealthAuthorizationRequested = false
             appleHealthAdjustmentEnabled = false
             healthStatusMessage = error.localizedDescription
         }
     }
 
     private func disableAppleHealthAdjustment() {
+        appleHealthAuthorizationRequested = false
         appleHealthAdjustmentEnabled = false
         healthStatusMessage = nil
     }
