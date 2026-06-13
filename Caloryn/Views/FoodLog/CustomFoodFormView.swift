@@ -383,20 +383,9 @@ struct CustomFoodFormView: View {
     }
 
     private var deleteSection: some View {
-        Button(role: .destructive) {
+        DestructiveGlassButton("Delete Manual Entry") {
             showingDeleteConfirmation = true
-        } label: {
-            HStack {
-                Image(systemName: "trash")
-                Text("Delete Manual Entry")
-            }
-            .font(.system(.body, weight: .medium))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.red)
-        .glassCard(cornerRadius: CalorynTheme.smallCornerRadius)
     }
 
     private func populateFromExisting() {

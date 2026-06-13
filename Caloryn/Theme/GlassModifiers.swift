@@ -41,6 +41,29 @@ struct CalorynInputFieldModifier: ViewModifier {
     }
 }
 
+struct DestructiveGlassButton: View {
+    let title: LocalizedStringKey
+    let systemImage: String
+    let action: () -> Void
+
+    init(_ title: LocalizedStringKey, systemImage: String = "trash", action: @escaping () -> Void) {
+        self.title = title
+        self.systemImage = systemImage
+        self.action = action
+    }
+
+    var body: some View {
+        Button(role: .destructive, action: action) {
+            Label(title, systemImage: systemImage)
+                .font(.system(.body, weight: .medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+        }
+        .buttonStyle(.glass)
+        .tint(CalorynTheme.terracotta)
+    }
+}
+
 extension View {
     func glassCard(cornerRadius: CGFloat = CalorynTheme.cornerRadius) -> some View {
         modifier(GlassCardModifier(cornerRadius: cornerRadius))

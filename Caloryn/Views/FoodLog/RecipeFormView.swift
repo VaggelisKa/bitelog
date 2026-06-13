@@ -263,16 +263,9 @@ struct RecipeFormView: View {
     }
 
     private var deleteSection: some View {
-        Button(role: .destructive) {
+        DestructiveGlassButton("Delete Recipe") {
             showingDeleteConfirmation = true
-        } label: {
-            Label("Delete Recipe", systemImage: "trash")
-            .font(.system(.body, weight: .medium))
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
         }
-        .buttonStyle(.glass)
-        .tint(CalorynTheme.terracotta)
     }
 
     @MainActor
