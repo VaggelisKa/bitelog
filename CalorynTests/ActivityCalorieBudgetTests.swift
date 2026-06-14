@@ -74,6 +74,39 @@ final class ActivityCalorieBudgetTests: XCTestCase {
         XCTAssertEqual(budget.displayedRingProgress, 1, accuracy: 0.001)
     }
 
+    func testProgressCapsAtOneAndAHalfWhileDisplayedRingStopsAtOne() {
+        let budget = ActivityCalorieBudget(
+            consumed: 4_000,
+            baseTarget: 2_000,
+            activeEnergyKcal: 0,
+            isActivityAdjustmentEnabled: false,
+            isActivityLoading: false,
+            activityMessage: nil
+        )
+
+        XCTAssertEqual(budget.progress, 1.5, accuracy: 0.001)
+        XCTAssertEqual(budget.displayedRingProgress, 1, accuracy: 0.001)
+        XCTAssertEqual(budget.overAmount, 2_000)
+    }
+
+    func testZeroTargetBudgetDoesNotDivideByZero() {
+        let budget = ActivityCalorieBudget(
+            consumed: 50,
+            baseTarget: 0,
+            activeEnergyKcal: 0,
+            isActivityAdjustmentEnabled: false,
+            isActivityLoading: false,
+            activityMessage: nil
+        )
+
+        XCTAssertEqual(budget.adjustedTarget, 0)
+        XCTAssertEqual(budget.remaining, 0)
+        XCTAssertEqual(budget.overAmount, 50)
+        XCTAssertTrue(budget.isOver)
+        XCTAssertEqual(budget.progress, 0, accuracy: 0.001)
+        XCTAssertEqual(budget.baseProgressEnd, 1, accuracy: 0.001)
+    }
+
     func testHealthCreditPolicyCopyMatchesTheBudgetMath() {
         XCTAssertEqual(ActivityCalorieBudget.activeEnergyCreditPercent, 70)
         XCTAssertEqual(ActivityCalorieBudget.activeEnergyCreditPolicyText, "70% of Apple Health Active Energy")
