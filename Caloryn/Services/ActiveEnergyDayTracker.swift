@@ -1,6 +1,34 @@
 import Foundation
-@preconcurrency import HealthKit
 import Observation
+
+struct ActiveEnergyObservation {
+    let stop: @MainActor () -> Void
+}
+
+@MainActor
+struct ActiveEnergyDataSource {
+    let isHealthAvailable: () -> Bool
+    let activeEnergyBurnedKcal: (Date) async throws -> Double
+    let observeActiveEnergyChanges: (@escaping @MainActor () -> Void) -> ActiveEnergyObservation?
+
+    static let healthKit = ActiveEnergyDataSource(
+        isHealthAvailable: {
+            HealthKitService.isHealthDataAvailable
+        },
+        activeEnergyBurnedKcal: { date in
+            try await HealthKitService.activeEnergyBurnedKcal(for: date)
+        },
+        observeActiveEnergyChanges: { onChange in
+            guard let query = HealthKitService.observeActiveEnergyChanges(onChange: onChange) else {
+                return nil
+            }
+
+            return ActiveEnergyObservation {
+                HealthKitService.stop(query)
+            }
+        }
+    )
+}
 
 @MainActor
 @Observable
@@ -9,9 +37,18 @@ final class ActiveEnergyDayTracker {
     private(set) var isLoading = false
     private(set) var message: String?
 
-    @ObservationIgnored private var activeEnergyObserver: HKObserverQuery?
+    @ObservationIgnored private let dataSource: ActiveEnergyDataSource
+    @ObservationIgnored private var activeEnergyObservation: ActiveEnergyObservation?
     private var selectedDate: Date = Date().startOfDay
     private var isEnabled = false
+
+    init() {
+        self.dataSource = .healthKit
+    }
+
+    init(dataSource: ActiveEnergyDataSource) {
+        self.dataSource = dataSource
+    }
 
     func configure(date: Date, isEnabled: Bool) async {
         let normalizedDate = date.startOfDay
@@ -27,7 +64,7 @@ final class ActiveEnergyDayTracker {
             return
         }
 
-        let observerNeedsStart = activeEnergyObserver == nil
+        let observerNeedsStart = activeEnergyObservation == nil
         startObservingIfNeeded()
 
         if dateChanged || enabledChanged || observerNeedsStart {
@@ -45,9 +82,9 @@ final class ActiveEnergyDayTracker {
     }
 
     func stopObserving() {
-        guard activeEnergyObserver != nil else { return }
-        HealthKitService.stop(activeEnergyObserver)
-        activeEnergyObserver = nil
+        guard let activeEnergyObservation else { return }
+        activeEnergyObservation.stop()
+        self.activeEnergyObservation = nil
     }
 
     private func refresh() async {
@@ -56,7 +93,7 @@ final class ActiveEnergyDayTracker {
             return
         }
 
-        guard AppleHealthAdjustmentSettings.isHealthAvailable else {
+        guard dataSource.isHealthAvailable() else {
             AppleHealthAdjustmentSettings.disable(message: AppleHealthAdjustmentSettings.unavailableMessage)
             isEnabled = false
             activeEnergyKcal = 0
@@ -72,7 +109,7 @@ final class ActiveEnergyDayTracker {
         }
 
         do {
-            let kcal = try await HealthKitService.activeEnergyBurnedKcal(for: selectedDate)
+            let kcal = try await dataSource.activeEnergyBurnedKcal(selectedDate)
             if activeEnergyKcal != kcal {
                 activeEnergyKcal = kcal
             }
@@ -93,9 +130,9 @@ final class ActiveEnergyDayTracker {
     }
 
     private func startObservingIfNeeded() {
-        guard activeEnergyObserver == nil, AppleHealthAdjustmentSettings.isHealthAvailable else { return }
+        guard activeEnergyObservation == nil, dataSource.isHealthAvailable() else { return }
 
-        activeEnergyObserver = HealthKitService.observeActiveEnergyChanges { [weak self] in
+        activeEnergyObservation = dataSource.observeActiveEnergyChanges { [weak self] in
             guard let self else { return }
 
             Task {
