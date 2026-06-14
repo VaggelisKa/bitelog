@@ -77,6 +77,57 @@ final class ActiveEnergyDayTrackerTests: XCTestCase {
         XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
     }
 
+    func testUnavailableHealthDisablesTheAdjustmentWithoutStartingObservation() async {
+        AppleHealthAdjustmentSettings.persist(
+            isEnabled: true,
+            authorizationRequested: true,
+            message: nil
+        )
+        var didStartObservation = false
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { false },
+            activeEnergyBurnedKcal: { _ in
+                XCTFail("Active energy should not be read when Health data is unavailable.")
+                return 0
+            },
+            observeActiveEnergyChanges: { _ in
+                didStartObservation = true
+                return nil
+            }
+        ))
+
+        await tracker.configure(date: .now, isEnabled: true)
+
+        XCTAssertEqual(tracker.activeEnergyKcal, 0, accuracy: 0.001)
+        XCTAssertFalse(tracker.isLoading)
+        XCTAssertEqual(tracker.message, AppleHealthAdjustmentSettings.unavailableMessage)
+        XCTAssertFalse(didStartObservation)
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.adjustmentEnabledKey))
+        XCTAssertFalse(UserDefaults.standard.bool(forKey: AppleHealthAdjustmentSettings.authorizationRequestedKey))
+    }
+
+    func testReconfiguringSameEnabledDayDoesNotReadActiveEnergyAgain() async {
+        var readCount = 0
+        let selectedDate = makeTestDate(year: 2026, month: 2, day: 14, hour: 8)
+        let sameDayLater = makeTestDate(year: 2026, month: 2, day: 14, hour: 18)
+        let tracker = ActiveEnergyDayTracker(dataSource: ActiveEnergyDataSource(
+            isHealthAvailable: { true },
+            activeEnergyBurnedKcal: { _ in
+                readCount += 1
+                return Double(readCount * 100)
+            },
+            observeActiveEnergyChanges: { _ in
+                ActiveEnergyObservation {}
+            }
+        ))
+
+        await tracker.configure(date: selectedDate, isEnabled: true)
+        await tracker.configure(date: sameDayLater, isEnabled: true)
+
+        XCTAssertEqual(readCount, 1)
+        XCTAssertEqual(tracker.activeEnergyKcal, 100, accuracy: 0.001)
+    }
+
     func testObserverCallbackRefreshesTheActiveEnergyValue() async {
         var onActiveEnergyChange: (@MainActor () -> Void)?
         var nextActiveEnergy = 100.0
